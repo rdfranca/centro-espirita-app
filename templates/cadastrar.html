@@ -1,0 +1,37 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Cadastrar Trabalhador</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+  <h2>Cadastrar Novo Trabalhador</h2>
+  <form action="/inserir" method="POST" class="mt-4">
+    <div class="mb-3">
+      <label for="nome" class="form-label">Nome completo:</label>
+      <input type="text" class="form-control" id="nome" name="nome" required>
+    </div>
+    <div class="mb-3">
+      <label for="cpf" class="form-label">CPF:</label>
+      <input type="text" class="form-control" id="cpf" name="cpf" required>
+    </div>
+    <div class="mb-3">
+      <label for="celular" class="form-label">Celular/WhatsApp:</label>
+      <input type="text" class="form-control" id="celular" name="celular">
+    </div>
+    <div class="mb-3">
+      <label for="profissao" class="form-label">Profissão:</label>
+      <input type="text" class="form-control" id="profissao" name="profissao">
+    </div>
+    <div class="mb-3">
+      <label for="setor" class="form-label">Setor de atuação:</label>
+      <input type="text" class="form-control" id="setor" name="setor">
+    </div>
+    <button type="submit" class="btn btn-success">Salvar</button>
+    <a href="/" class="btn btn-secondary ms-2">Cancelar</a>
+  </form>
+</body>
+</html>
