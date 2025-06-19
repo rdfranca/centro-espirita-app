@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, redirect
 import mysql.connector
 import os
@@ -27,7 +28,7 @@ def buscar():
     elif tipo == "cpf":
         query = "SELECT * FROM trabalhadores WHERE cpf = %s"
     elif tipo == "setor":
-        query = "SELECT * FROM trabalhadores WHERE setor LIKE %s"
+        query = "SELECT * FROM trabalhadores WHERE setores LIKE %s"
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -45,15 +46,22 @@ def cadastrar():
 def inserir():
     nome = request.form['nome']
     cpf = request.form['cpf'][:20]
+    data_nascimento = request.form.get('data_nascimento', '')
     celular = request.form.get('celular', '')
     profissao = request.form.get('profissao', '')
-    setor = request.form.get('setor', '')
+    email = request.form.get('email', '')
+    endereco = request.form.get('endereco', '')
+    cep = request.form.get('cep', '')
+    bairro = request.form.get('bairro', '')
+    setores = ', '.join(request.form.getlist('setores'))
 
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO trabalhadores (nome, cpf, celular, profissao, setor) VALUES (%s, %s, %s, %s, %s)",
-        (nome, cpf, celular, profissao, setor)
+        """INSERT INTO trabalhadores 
+        (nome, cpf, data_nascimento, celular, profissao, email, endereco, cep, bairro, setores) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+        (nome, cpf, data_nascimento, celular, profissao, email, endereco, cep, bairro, setores)
     )
     conn.commit()
     cursor.close()
@@ -66,24 +74,37 @@ def editar_form():
                            id=request.form['id'],
                            nome=request.form['nome'],
                            cpf=request.form['cpf'],
+                           data_nascimento=request.form['data_nascimento'],
                            celular=request.form['celular'],
                            profissao=request.form['profissao'],
-                           setor=request.form['setor'])
+                           email=request.form['email'],
+                           endereco=request.form['endereco'],
+                           cep=request.form['cep'],
+                           bairro=request.form['bairro'],
+                           setores=request.form['setores'])
 
 @app.route("/editar", methods=["POST"])
 def editar():
     id_trab = request.form['id']
     nome = request.form['nome']
     cpf = request.form['cpf'][:20]
+    data_nascimento = request.form['data_nascimento']
     celular = request.form['celular']
     profissao = request.form['profissao']
-    setor = request.form['setor']
+    email = request.form['email']
+    endereco = request.form['endereco']
+    cep = request.form['cep']
+    bairro = request.form['bairro']
+    setores = ', '.join(request.form.getlist('setores'))
 
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE trabalhadores SET nome = %s, cpf = %s, celular = %s, profissao = %s, setor = %s WHERE id = %s",
-        (nome, cpf, celular, profissao, setor, id_trab)
+        """UPDATE trabalhadores SET 
+        nome = %s, cpf = %s, data_nascimento = %s, celular = %s,
+        profissao = %s, email = %s, endereco = %s, cep = %s, bairro = %s, setores = %s
+        WHERE id = %s""",
+        (nome, cpf, data_nascimento, celular, profissao, email, endereco, cep, bairro, setores, id_trab)
     )
     conn.commit()
     cursor.close()
