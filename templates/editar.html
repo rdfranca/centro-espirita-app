@@ -4,27 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <title>Editar Trabalhador</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
 </head>
 <body>
     <h2>Editar Trabalhador</h2>
     <form method="POST" action="/editar">
         <input type="hidden" name="id" value="{{ id }}">
-        Nome: <input type="text" name="nome" value="{{ nome }}"><br>
-        CPF: <input type="text" name="cpf" value="{{ cpf }}"><br>
-        Data de Nascimento: <input type="date" name="data_nascimento" value="{{ data_nascimento }}"><br>
-        Celular: <input type="text" name="celular" value="{{ celular }}"><br>
-        Profissão: <input type="text" name="profissao" value="{{ profissao }}"><br>
-        Email: <input type="email" name="email" value="{{ email }}"><br>
-        Endereço: <input type="text" name="endereco" value="{{ endereco }}"><br>
-        CEP: <input type="text" name="cep" value="{{ cep }}"><br>
-        Bairro: <input type="text" name="bairro" value="{{ bairro }}"><br>
-        Setores:
+        <label>Nome: <input type="text" name="nome" value="{{ nome }}"></label><br>
+        <label>CPF: <input type="text" name="cpf" value="{{ cpf }}"></label><br>
+        <label>Data de Nascimento: <input type="date" name="data_nascimento" value="{{ data_nascimento }}"></label><br>
+        <label>Celular: <input type="text" name="celular" value="{{ celular }}"></label><br>
+        <label>Profissão: <input type="text" name="profissao" value="{{ profissao }}"></label><br>
+        <label>Email: <input type="email" name="email" value="{{ email }}"></label><br>
+        <label>Endereço: <input type="text" name="endereco" value="{{ endereco }}"></label><br>
+        <label>CEP: <input type="text" name="cep" value="{{ cep }}"></label><br>
+        <label>Bairro: <input type="text" name="bairro" value="{{ bairro }}"></label><br>
+        <label>Setores:</label>
         <select name="setores" multiple>
             {% for setor in ['Evangelização', 'Mediúnico', 'Apoio', 'Administração', 'Passes'] %}
                 <option value="{{ setor }}" {% if setor in setores %}selected{% endif %}>{{ setor }}</option>
             {% endfor %}
-        </select><br>
+        </select><br><br>
         <input type="submit" value="Salvar">
     </form>
+    <a href="/">Voltar</a>
 </body>
 </html>
