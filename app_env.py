@@ -4,21 +4,38 @@ import os
 
 app = Flask(__name__)
 
-@app.route("/")
-def index():
-    conn = mysql.connector.connect(
+def get_connection():
+    return mysql.connector.connect(
         host=os.getenv('DB_HOST'),
         port=int(os.getenv('DB_PORT', 3306)),
         user=os.getenv('DB_USER'),
         password=os.getenv('DB_PASSWORD'),
         database=os.getenv('DB_NAME')
     )
+
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/buscar", methods=["POST"])
+def buscar():
+    termo = request.form['termo']
+    tipo = request.form['tipo']
+    query = ""
+    if tipo == "nome":
+        query = "SELECT * FROM trabalhadores WHERE nome LIKE %s"
+    elif tipo == "cpf":
+        query = "SELECT * FROM trabalhadores WHERE cpf = %s"
+    elif tipo == "setor":
+        query = "SELECT * FROM trabalhadores WHERE setor LIKE %s"
+
+    conn = get_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM trabalhadores ORDER BY nome")
-    trabalhadores = cursor.fetchall()
+    cursor.execute(query, ('%' + termo + '%',))
+    resultados = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template("index.html", trabalhadores=trabalhadores)
+    return render_template("resultado.html", resultados=resultados)
 
 @app.route("/cadastrar")
 def cadastrar():
@@ -32,13 +49,7 @@ def inserir():
     profissao = request.form.get('profissao', '')
     setor = request.form.get('setor', '')
 
-    conn = mysql.connector.connect(
-        host=os.getenv('DB_HOST'),
-        port=int(os.getenv('DB_PORT', 3306)),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
-    )
+    conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
         "INSERT INTO trabalhadores (nome, cpf, celular, profissao, setor) VALUES (%s, %s, %s, %s, %s)",

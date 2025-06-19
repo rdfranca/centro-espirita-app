@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -9,7 +8,10 @@
 </head>
 <body class="container mt-5">
   <h2>Consultar Trabalhador</h2>
-  <form action="/buscar" method="POST" class="mt-4">
+
+  <a href="/cadastrar" class="btn btn-success mb-3">+ Novo Trabalhador</a>
+
+  <form action="/buscar" method="POST" class="mb-3">
     <div class="mb-3">
       <label for="tipo" class="form-label">Buscar por:</label>
       <select class="form-select" name="tipo">
