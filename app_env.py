@@ -8,6 +8,7 @@ app = Flask(__name__)
 # Conexão com o banco de dados MySQL usando variáveis de ambiente
 conn = mysql.connector.connect(
     host=os.getenv('DB_HOST', 'localhost'),
+    port=int(os.getenv('DB_PORT', 3306)),
     user=os.getenv('DB_USER', 'root'),
     password=os.getenv('DB_PASSWORD', ''),
     database=os.getenv('DB_NAME', 'centro_espirita')
