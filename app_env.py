@@ -44,7 +44,7 @@ def cadastrar():
 @app.route("/inserir", methods=["POST"])
 def inserir():
     nome = request.form['nome']
-    cpf = request.form['cpf']
+    cpf = request.form['cpf'][:20]
     celular = request.form.get('celular', '')
     profissao = request.form.get('profissao', '')
     setor = request.form.get('setor', '')
@@ -54,6 +54,36 @@ def inserir():
     cursor.execute(
         "INSERT INTO trabalhadores (nome, cpf, celular, profissao, setor) VALUES (%s, %s, %s, %s, %s)",
         (nome, cpf, celular, profissao, setor)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return redirect("/")
+
+@app.route("/editar-form", methods=["POST"])
+def editar_form():
+    return render_template("editar.html",
+                           id=request.form['id'],
+                           nome=request.form['nome'],
+                           cpf=request.form['cpf'],
+                           celular=request.form['celular'],
+                           profissao=request.form['profissao'],
+                           setor=request.form['setor'])
+
+@app.route("/editar", methods=["POST"])
+def editar():
+    id_trab = request.form['id']
+    nome = request.form['nome']
+    cpf = request.form['cpf'][:20]
+    celular = request.form['celular']
+    profissao = request.form['profissao']
+    setor = request.form['setor']
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE trabalhadores SET nome = %s, cpf = %s, celular = %s, profissao = %s, setor = %s WHERE id = %s",
+        (nome, cpf, celular, profissao, setor, id_trab)
     )
     conn.commit()
     cursor.close()
