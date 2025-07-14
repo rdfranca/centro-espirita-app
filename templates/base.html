@@ -1,0 +1,25 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro de Trabalhadores</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f7f7f7; }
+        header img { height: 60px; margin-bottom: 20px; }
+        .container { background: #fff; padding: 20px; border-radius: 10px; max-width: 960px; margin: auto; box-shadow: 0 0 10px #ccc; }
+        h1, h2 { color: #444; }
+        form input, form select { padding: 8px; margin: 5px 0; width: 100%; }
+        .btn { background-color: #4CAF50; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; }
+        .btn:hover { background-color: #45a049; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <img src="/static/logo.png" alt="Logo">
+        </header>
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

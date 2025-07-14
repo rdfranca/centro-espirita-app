@@ -1,28 +1,23 @@
 
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Resultado da Busca</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
-</head>
-<body>
-    <img src="/static/logo.png" alt="Logo" style="max-height: 100px;"><h2>Resultado da Busca</h2>
-    {% if resultados %}
-        {% for r in resultados %}
-        <form action="/editar-form" method="POST">
-            {% for campo, valor in r.items() %}
-                <input type="hidden" name="{{ campo }}" value="{{ valor }}">
-            {% endfor %}
-            <p><strong>{{ r.nome }}</strong> - CPF: {{ r.cpf }}<br>
-            Setores: {{ r.setores }}</p>
-            <button type="submit">Editar</button>
-        </form>
-        <hr>
-        {% endfor %}
-    {% else %}
-        <p>Nenhum resultado encontrado.</p>
-    {% endif %}
-    <a href="/">Voltar</a>
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<h1>Resultado da Busca</h1>
+{% if resultados %}
+    {% for r in resultados %}
+    <div style="margin-bottom: 20px;">
+        <strong>Nome:</strong> {{ r[1] }}<br>
+        <strong>CPF:</strong> {{ r[2] }}<br>
+        <strong>Celular:</strong> {{ r[3] }}<br>
+        <strong>Profissão:</strong> {{ r[4] }}<br>
+        <strong>Nascimento:</strong> {{ r[5] }}<br>
+        <strong>Endereço:</strong> {{ r[7] }}, {{ r[6] }} - {{ r[8] }} - {{ r[9] }}/{{ r[10] }}<br>
+        <strong>Setores:</strong> {{ r[11]|join(', ') }}<br>
+        <strong>Funções:</strong> {{ r[12]|join(', ') }}<br>
+        <strong>Turnos:</strong> {{ r[13]|join(', ') }}
+    </div>
+    {% endfor %}
+{% else %}
+    <p>Nenhum resultado encontrado.</p>
+{% endif %}
+<a href="/" class="btn">Voltar</a>
+{% endblock %}
