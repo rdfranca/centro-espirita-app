@@ -1,10 +1,12 @@
-
 {% extends "base.html" %}
 {% block content %}
-<h1>Pesquisar Trabalhador</h1>
+<h1 style="margin-bottom: 20px;">Pesquisar Trabalhador</h1>
 <form action="/buscar" method="POST">
-    <input type="text" name="termo" placeholder="Digite o nome ou CPF">
-    <button type="submit" class="btn">Buscar</button>
+    <div class="form-group">
+        <input type="text" name="termo" class="form-control" placeholder="Digite o nome ou CPF" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Buscar</button>
 </form>
-<a href="/cadastrar" class="btn" style="margin-top: 15px; display: inline-block;">Cadastrar Novo</a>
+<hr>
+<a href="/cadastrar" class="btn btn-success" style="margin-top: 15px;">Cadastrar Novo</a>
 {% endblock %}
