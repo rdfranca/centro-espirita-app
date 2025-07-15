@@ -24,7 +24,7 @@
             <label for="setores[]">Setor:</label>
             <select name="setores[]">
                 <option disabled selected>Selecione o setor</option>
-                {% for id, nome in setoreses %}
+                {% for id, nome in setores %}
                     <option value="{{ id }}">{{ nome }}</option>
                 {% endfor %}
             </select>
@@ -49,33 +49,43 @@
 </form>
 
 <script>
+function aplicarEventosVinculo(vinculo) {
+    const selectSetor = vinculo.querySelector('select[name="setores[]"]');
+    const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
+
+    selectSetor.addEventListener('change', function () {
+        const setorId = this.value;
+        fetch(`/funcoes/${setorId}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log("Funções recebidas:", data);
+                selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
+                data.forEach(([id, nome]) => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = nome;
+                    selectFuncao.appendChild(opt);
+                });
+            })
+            .catch(err => console.error("Erro ao buscar funções:", err));
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+});
+
 function adicionarVinculo() {
     const container = document.getElementById("vinculos");
     const div = document.querySelector(".vinculo").cloneNode(true);
+
+    // Limpa os selects
+    div.querySelector('select[name="setores[]"]').selectedIndex = 0;
+    div.querySelector('select[name="funcoes[]"]').innerHTML = '<option disabled selected>Selecione o setor primeiro</option>';
+    div.querySelector('select[name="turnos[]"]').selectedIndex = 0;
+
+    aplicarEventosVinculo(div);
     container.appendChild(div);
 }
 </script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('select[name="setores[]"]').forEach(function(selectSetor) {
-        selectSetor.addEventListener('change', function () {
-            const setorId = this.value;
-            const selectFuncao = this.parentElement.querySelector('select[name="funcoes[]"]');
-            fetch(`/funcoes/${setorId}`)
-                .then(response => response.json())
-                .then(data => {
-                    selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
-                    data.forEach(([id, nome]) => {
-                        const opt = document.createElement('option');
-                        opt.value = id;
-                        opt.textContent = nome;
-                        selectFuncao.appendChild(opt);
-                    });
-                });
-        });
-    });
-});
-</script>
-
 {% endblock %}
