@@ -36,3 +36,34 @@ def funcoes_por_setor(setor_id):
     funcoes = cursor.fetchall()
     conn.close()
     return jsonify(funcoes)
+
+
+@app.route("/inserir", methods=["POST"])
+def inserir():
+    conn = conectar()
+    cursor = conn.cursor()
+    nome = request.form.get("nome")
+    cpf = request.form.get("cpf")
+    nascimento = request.form.get("nascimento")
+    telefone = request.form.get("telefone")
+    email = request.form.get("email")
+    setor_id = request.form.get("setor")
+    funcao_id = request.form.get("funcao")
+    turno = request.form.get("turno")
+
+    cursor.execute("""
+        INSERT INTO trabalhador (nome, cpf, nascimento, telefone, email)
+        VALUES (%s, %s, %s, %s, %s)
+        RETURNING id
+    """, (nome, cpf, nascimento, telefone, email))
+    trabalhador_id = cursor.fetchone()[0]
+
+    cursor.execute("""
+        INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
+        VALUES (%s, %s, %s, %s)
+    """, (trabalhador_id, setor_id, funcao_id, turno))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/")
