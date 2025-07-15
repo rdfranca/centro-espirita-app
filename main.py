@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, jsonify
 import psycopg2
 import os
@@ -13,6 +12,10 @@ def conectar():
         password=os.environ.get("DB_PASSWORD"),
         port=os.environ.get("DB_PORT", 5432)
     )
+
+@app.route("/")
+def index():
+    return render_template("index.html")
 
 @app.route("/cadastrar")
 def cadastrar():
@@ -30,16 +33,6 @@ def funcoes_por_setor(setor_id):
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome", (setor_id,))
-    resultados = cursor.fetchall()
+    funcoes = cursor.fetchall()
     conn.close()
-    return jsonify(resultados)
-
-@app.route("/")
-def index_view():
-    return redirect("/cadastrar")
-
-if __name__ == "__main__":
-    app.run(debug=True)
-
-
-    return render_template("index.html")
+    return jsonify(funcoes)
