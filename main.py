@@ -1,37 +1,42 @@
 
-from flask import Flask, render_template, request, redirect, url_for
-from app_env import conectar
+from flask import Flask, render_template, request, redirect, jsonify
+import psycopg2
+import os
+
 app = Flask(__name__)
 
-@app.route('/')
-def index():
-    conn = conectar()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM trabalhador")
-    trabalhadores = cur.fetchall()
-    conn.close()
-    return render_template("index.html", trabalhadores=trabalhadores)
+def conectar():
+    return psycopg2.connect(
+        host=os.environ.get("DB_HOST"),
+        database=os.environ.get("DB_NAME"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD"),
+        port=os.environ.get("DB_PORT", 5432)
+    )
 
-@app.route('/cadastrar', methods=['GET', 'POST'])
+@app.route("/cadastrar")
 def cadastrar():
     conn = conectar()
-    cur = conn.cursor()
-    if request.method == 'POST':
-        nome = request.form['nome']
-        cur.execute("INSERT INTO trabalhador (nome) VALUES (%s)", (nome,))
-        conn.commit()
-        return redirect(url_for('index'))
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
+    setores = cursor.fetchall()
+    cursor.execute("SELECT id, nome, setor_id FROM funcao ORDER BY nome")
+    funcoes = cursor.fetchall()
     conn.close()
-    return render_template("cadastrar.html")
+    return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
 
-@app.route('/funcoes/<int:setor_id>')
-def funcoes(setor_id):
+@app.route("/funcoes/<int:setor_id>")
+def funcoes_por_setor(setor_id):
     conn = conectar()
-    cur = conn.cursor()
-    cur.execute("SELECT id, nome FROM funcao WHERE setor_id = %s", (setor_id,))
-    funcoes = cur.fetchall()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome", (setor_id,))
+    resultados = cursor.fetchall()
     conn.close()
-    return {'funcoes': funcoes}
+    return jsonify(resultados)
 
-if __name__ == '__main__':
+@app.route("/")
+def index():
+    return redirect("/index.html")
+
+if __name__ == "__main__":
     app.run(debug=True)
