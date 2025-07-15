@@ -26,8 +26,8 @@ def buscar():
         query = "SELECT * FROM trabalhadores WHERE nome LIKE %s"
     elif tipo == "cpf":
         query = "SELECT * FROM trabalhadores WHERE cpf = %s"
-    elif tipo == "setor":
-        query = "SELECT * FROM trabalhadores WHERE setor LIKE %s"
+    elif tipo == "setores":
+        query = "SELECT * FROM trabalhadores WHERE setores LIKE %s"
 
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
@@ -47,13 +47,13 @@ def inserir():
     cpf = request.form['cpf'][:20]
     celular = request.form.get('celular', '')
     profissao = request.form.get('profissao', '')
-    setor = request.form.get('setor', '')
+    setores = request.form.get('setores', '')
 
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO trabalhadores (nome, cpf, celular, profissao, setor) VALUES (%s, %s, %s, %s, %s)",
-        (nome, cpf, celular, profissao, setor)
+        "INSERT INTO trabalhadores (nome, cpf, celular, profissao, setores) VALUES (%s, %s, %s, %s, %s)",
+        (nome, cpf, celular, profissao, setores)
     )
     conn.commit()
     cursor.close()
@@ -68,7 +68,7 @@ def editar_form():
                            cpf=request.form['cpf'],
                            celular=request.form['celular'],
                            profissao=request.form['profissao'],
-                           setor=request.form['setor'])
+                           setores=request.form['setores'])
 
 @app.route("/editar", methods=["POST"])
 def editar():
@@ -77,13 +77,13 @@ def editar():
     cpf = request.form['cpf'][:20]
     celular = request.form['celular']
     profissao = request.form['profissao']
-    setor = request.form['setor']
+    setores = request.form['setores']
 
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "UPDATE trabalhadores SET nome = %s, cpf = %s, celular = %s, profissao = %s, setor = %s WHERE id = %s",
-        (nome, cpf, celular, profissao, setor, id_trab)
+        "UPDATE trabalhadores SET nome = %s, cpf = %s, celular = %s, profissao = %s, setores = %s WHERE id = %s",
+        (nome, cpf, celular, profissao, setores, id_trab)
     )
     conn.commit()
     cursor.close()

@@ -159,7 +159,7 @@ if __name__ == "__main__":
 def funcoes_por_setor(setor_id):
     conn = conectar()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM funcoes WHERE setor_id = %s ORDER BY nome", (setor_id,))
+    cursor.execute("SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome", (setor_id,))
     resultados = cursor.fetchall()
     conn.close()
     return jsonify(resultados)

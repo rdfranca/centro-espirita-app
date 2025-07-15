@@ -25,13 +25,13 @@ def buscar():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento, e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
-               ARRAY_AGG(DISTINCT s.nome) AS setores,
+               ARRAY_AGG(DISTINCT s.nome) AS setoreses,
                ARRAY_AGG(DISTINCT f.nome) AS funcoes,
                ARRAY_AGG(DISTINCT tsf.turno) AS turnos
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
-        LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
-        LEFT JOIN setor s ON tsf.setor_id = s.id
+        LEFT JOIN trabalhador_setores_funcao tsf ON t.id = tsf.trabalhador_id
+        LEFT JOIN setores s ON tsf.setores_id = s.id
         LEFT JOIN funcao f ON tsf.funcao_id = f.id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
         GROUP BY t.id, e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado
@@ -45,11 +45,11 @@ def cadastrar():
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
-    setores = cursor.fetchall()
+    setoreses = cursor.fetchall()
     cursor.execute("SELECT id, nome FROM funcao ORDER BY nome")
     funcoes = cursor.fetchall()
     conn.close()
-    return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
+    return render_template("cadastrar.html", setoreses=setoreses, funcoes=funcoes)
 
 @app.route("/inserir", methods=["POST"])
 def inserir():
@@ -81,15 +81,15 @@ def inserir():
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
 
-    setores = request.form.getlist("setores[]")
+    setoreses = request.form.getlist("setoreses[]")
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
 
-    for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+    for setores_id, funcao_id, turno in zip(setoreses, funcoes, turnos):
         cursor.execute("""
-            INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
+            INSERT INTO trabalhador_setores_funcao (trabalhador_id, setores_id, funcao_id, turno)
             VALUES (%s, %s, %s, %s)
-        """, (trabalhador_id, setor_id, funcao_id, turno))
+        """, (trabalhador_id, setores_id, funcao_id, turno))
 
     conn.commit()
     conn.close()
