@@ -1,91 +1,14 @@
-
-{% extends "base.html" %}
-{% block content %}
-<h1>Cadastrar Novo Trabalhador</h1>
-<form action="/inserir" method="POST">
-    <h2>Dados Pessoais</h2>
-    <input type="text" name="nome" placeholder="Nome completo" required>
-    <input type="text" name="cpf" placeholder="CPF" required>
-    <input type="text" name="celular" placeholder="Celular">
-    <input type="text" name="profissao" placeholder="Profissão">
-    <input type="date" name="nascimento" placeholder="Data de nascimento">
-
-    <h2>Endereço</h2>
-    <input type="text" name="cep" placeholder="CEP">
-    <input type="text" name="rua" placeholder="Rua">
-    <input type="text" name="numero" placeholder="Número">
-    <input type="text" name="bairro" placeholder="Bairro">
-    <input type="text" name="cidade" placeholder="Cidade">
-    <input type="text" name="estado" placeholder="Estado">
-
-    <h2>Setores, Funções e Turnos</h2>
-    <div id="vinculos">
-        <div class="vinculo" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-            <label for="setores[]">Setor:</label>
-            <select name="setores[]">
-                <option disabled selected>Selecione o setor</option>
-                {% for id, nome in setores %}
-                    <option value="{{ id }}">{{ nome }}</option>
-                {% endfor %}
-            </select>
-
-            <label for="funcoes[]">Função:</label>
-            <select name="funcoes[]">
-                <option disabled selected>Selecione o setor primeiro</option>
-            </select>
-
-            <label for="turnos[]">Turno:</label>
-            <select name="turnos[]">
-                <option disabled selected>Selecione o turno</option>
-                <option value="Manhã">Manhã</option>
-                <option value="Tarde">Tarde</option>
-                <option value="Noite">Noite</option>
-            </select>
-        </div>
-    </div>
-    <button type="button" class="btn" onclick="adicionarVinculo()">Adicionar outro</button>
-    <br><br>
-    <button type="submit" class="btn">Salvar</button>
-</form>
-
-<script>
-function aplicarEventosVinculo(vinculo) {
-    const selectSetor = vinculo.querySelector('select[name="setores[]"]');
-    const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
-
-    selectSetor.addEventListener('change', function () {
-        const setorId = this.value;
-        fetch(`/funcoes/${setorId}`)
-            .then(response => response.json())
-            .then(data => {
-                console.log("Funções recebidas:", data);
-                selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
-                data.forEach(([id, nome]) => {
-                    const opt = document.createElement('option');
-                    opt.value = id;
-                    opt.textContent = nome;
-                    selectFuncao.appendChild(opt);
-                });
-            })
-            .catch(err => console.error("Erro ao buscar funções:", err));
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
-});
-
-function adicionarVinculo() {
-    const container = document.getElementById("vinculos");
-    const div = document.querySelector(".vinculo").cloneNode(true);
-
-    // Limpa os selects
-    div.querySelector('select[name="setores[]"]').selectedIndex = 0;
-    div.querySelector('select[name="funcoes[]"]').innerHTML = '<option disabled selected>Selecione o setor primeiro</option>';
-    div.querySelector('select[name="turnos[]"]').selectedIndex = 0;
-
-    aplicarEventosVinculo(div);
-    container.appendChild(div);
-}
-</script>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastrar Trabalhador</title>
+</head>
+<body>
+    <h1>Cadastrar Trabalhador</h1>
+    <form action="/salvar" method="post">
+        <input type="text" name="nome" placeholder="Nome completo">
+        <input type="submit" value="Salvar">
+    </form>
+</body>
+</html>

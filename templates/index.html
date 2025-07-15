@@ -1,10 +1,12 @@
-
-{% extends "base.html" %}
-{% block content %}
-<h1>Pesquisar Trabalhador</h1>
-<form action="/buscar" method="POST">
-    <input type="text" name="termo" placeholder="Digite o nome ou CPF">
-    <button type="submit" class="btn">Buscar</button>
-</form>
-<a href="/cadastrar" class="btn" style="margin-top: 15px; display: inline-block;">Cadastrar Novo</a>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Centro Espírita - Início</title>
+</head>
+<body>
+    <h1>Bem-vindo ao Sistema</h1>
+    <a href="/buscar"><button>Buscar Trabalhador</button></a>
+    <a href="/cadastrar"><button>Cadastrar Trabalhador</button></a>
+</body>
+</html>
