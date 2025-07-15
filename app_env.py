@@ -44,7 +44,7 @@ def buscar():
 def cadastrar():
     conn = conectar()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
+    cursor.execute("SELECT id, nome FROM setor ORDER BY nome")
     setores = cursor.fetchall()
     cursor.execute("SELECT id, nome FROM funcao ORDER BY nome")
     funcoes = cursor.fetchall()

@@ -1,4 +1,3 @@
-
 import os
 import psycopg2
 from flask import Flask, render_template, request, redirect
@@ -154,3 +153,13 @@ def editar():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+@app.route("/funcoes/<int:setor_id>")
+def funcoes_por_setor(setor_id):
+    conn = conectar()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome FROM funcoes WHERE setor_id = %s ORDER BY nome", (setor_id,))
+    resultados = cursor.fetchall()
+    conn.close()
+    return jsonify(resultados)

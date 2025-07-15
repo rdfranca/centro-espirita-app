@@ -31,10 +31,7 @@
 
             <label for="funcoes[]">Função:</label>
             <select name="funcoes[]">
-                <option disabled selected>Selecione a função</option>
-                {% for id, nome in funcoes %}
-                    <option value="{{ id }}">{{ nome }}</option>
-                {% endfor %}
+                <option disabled selected>Selecione o setor primeiro</option>
             </select>
 
             <label for="turnos[]">Turno:</label>
@@ -58,4 +55,27 @@ function adicionarVinculo() {
     container.appendChild(div);
 }
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('select[name="setores[]"]').forEach(function(selectSetor) {
+        selectSetor.addEventListener('change', function () {
+            const setorId = this.value;
+            const selectFuncao = this.parentElement.querySelector('select[name="funcoes[]"]');
+            fetch(`/funcoes/${setorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
+                    data.forEach(([id, nome]) => {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.textContent = nome;
+                        selectFuncao.appendChild(opt);
+                    });
+                });
+        });
+    });
+});
+</script>
+
 {% endblock %}
