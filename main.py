@@ -44,7 +44,7 @@ def inserir():
     cursor = conn.cursor()
     nome = request.form.get("nome")
     cpf = request.form.get("cpf")
-    nascimento = request.form.get("nascimento")
+    data_nascimento = request.form.get("data_nascimento")
     telefone = request.form.get("telefone")
     email = request.form.get("email")
     setor_id = request.form.get("setor")
@@ -52,10 +52,10 @@ def inserir():
     turno = request.form.get("turno")
 
     cursor.execute("""
-        INSERT INTO trabalhador (nome, cpf, nascimento, telefone, email)
+        INSERT INTO trabalhador (nome, cpf, data_nascimento, telefone, email)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id
-    """, (nome, cpf, nascimento, telefone, email))
+    """, (nome, cpf, data_nascimento, telefone, email))
     trabalhador_id = cursor.fetchone()[0]
 
     cursor.execute("""
