@@ -35,7 +35,7 @@ def funcoes_por_setor(setor_id):
     return jsonify(resultados)
 
 @app.route("/")
-def index():
+def index_view():
     return redirect("/cadastrar")
 
 if __name__ == "__main__":
@@ -43,5 +43,5 @@ if __name__ == "__main__":
 
 
 @app.route("/")
-def index():
+def index_view():
     return render_template("index.html")
