@@ -1,42 +1,31 @@
 
-from flask import Flask, render_template, request, redirect, jsonify
-import psycopg2
-import os
+from flask import Flask, render_template, request, redirect
 
 app = Flask(__name__)
 
-def conectar():
-    return psycopg2.connect(
-        host=os.environ.get("DB_HOST"),
-        database=os.environ.get("DB_NAME"),
-        user=os.environ.get("DB_USER"),
-        password=os.environ.get("DB_PASSWORD"),
-        port=os.environ.get("DB_PORT", 5432)
-    )
+trabalhadores = []
 
-@app.route("/cadastrar")
-def cadastrar():
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
-    setores = cursor.fetchall()
-    cursor.execute("SELECT id, nome, setor_id FROM funcao ORDER BY nome")
-    funcoes = cursor.fetchall()
-    conn.close()
-    return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
-
-@app.route("/funcoes/<int:setor_id>")
-def funcoes_por_setor(setor_id):
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome", (setor_id,))
-    resultados = cursor.fetchall()
-    conn.close()
-    return jsonify(resultados)
-
-@app.route("/")
+@app.route('/')
 def index():
-    return redirect("/index.html")
+    return render_template('index.html')
 
-if __name__ == "__main__":
+@app.route('/cadastrar', methods=['GET', 'POST'])
+def cadastrar():
+    if request.method == 'POST':
+        nome = request.form.get('nome')
+        if nome:
+            trabalhadores.append(nome)
+            return redirect('/')
+    return render_template('cadastrar.html')
+
+@app.route('/buscar')
+def buscar():
+    nome = request.args.get('nome', '').lower()
+    if nome:
+        resultados = [n for n in trabalhadores if nome in n.lower()]
+    else:
+        resultados = []
+    return render_template('buscar.html', resultados=resultados)
+
+if __name__ == '__main__':
     app.run(debug=True)

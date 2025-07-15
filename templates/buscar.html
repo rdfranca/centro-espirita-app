@@ -1,0 +1,20 @@
+
+<!DOCTYPE html>
+<html>
+<head><title>Buscar Trabalhador</title></head>
+<body>
+    <h1>Buscar Trabalhador</h1>
+    <form method="get" action="/buscar">
+        <input type="text" name="nome" placeholder="Digite o nome">
+        <button type="submit">Buscar</button>
+    </form>
+    {% if resultados %}
+        <ul>
+        {% for r in resultados %}
+            <li>{{ r }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+    <a href="/"><button>Voltar</button></a>
+</body>
+</html>
