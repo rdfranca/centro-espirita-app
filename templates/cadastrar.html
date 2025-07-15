@@ -24,7 +24,7 @@
             <label for="setores[]">Setor:</label>
             <select name="setores[]">
                 <option disabled selected>Selecione o setor</option>
-                {% for id, nome in setores %}
+                {% for id, nome in setoreses %}
                     <option value="{{ id }}">{{ nome }}</option>
                 {% endfor %}
             </select>
