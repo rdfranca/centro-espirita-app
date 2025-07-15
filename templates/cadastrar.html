@@ -20,18 +20,26 @@
 
     <h2>Setores, Funções e Turnos</h2>
     <div id="vinculos">
-        <div class="vinculo">
+        <div class="vinculo" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+            <label for="setores[]">Setor:</label>
             <select name="setores[]">
+                <option disabled selected>Selecione o setor</option>
                 {% for id, nome in setores %}
                     <option value="{{ id }}">{{ nome }}</option>
                 {% endfor %}
             </select>
+
+            <label for="funcoes[]">Função:</label>
             <select name="funcoes[]">
+                <option disabled selected>Selecione a função</option>
                 {% for id, nome in funcoes %}
                     <option value="{{ id }}">{{ nome }}</option>
                 {% endfor %}
             </select>
+
+            <label for="turnos[]">Turno:</label>
             <select name="turnos[]">
+                <option disabled selected>Selecione o turno</option>
                 <option value="Manhã">Manhã</option>
                 <option value="Tarde">Tarde</option>
                 <option value="Noite">Noite</option>
@@ -42,6 +50,7 @@
     <br><br>
     <button type="submit" class="btn">Salvar</button>
 </form>
+
 <script>
 function adicionarVinculo() {
     const container = document.getElementById("vinculos");
