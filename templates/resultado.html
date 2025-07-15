@@ -1,23 +1,2 @@
-
-{% extends "base.html" %}
-{% block content %}
-<h1>Resultado da Busca</h1>
-{% if resultados %}
-    {% for r in resultados %}
-    <div style="margin-bottom: 20px;">
-        <strong>Nome:</strong> {{ r[1] }}<br>
-        <strong>CPF:</strong> {{ r[2] }}<br>
-        <strong>Celular:</strong> {{ r[3] }}<br>
-        <strong>Profissão:</strong> {{ r[4] }}<br>
-        <strong>Nascimento:</strong> {{ r[5] }}<br>
-        <strong>Endereço:</strong> {{ r[7] }}, {{ r[6] }} - {{ r[8] }} - {{ r[9] }}/{{ r[10] }}<br>
-        <strong>Setores:</strong> {{ r[11]|join(', ') }}<br>
-        <strong>Funções:</strong> {{ r[12]|join(', ') }}<br>
-        <strong>Turnos:</strong> {{ r[13]|join(', ') }}
-    </div>
-    {% endfor %}
-{% else %}
-    <p>Nenhum resultado encontrado.</p>
-{% endif %}
-<a href="/" class="btn">Voltar</a>
-{% endblock %}
+<!-- Página de resultado -->
+<h1>Resultado</h1>

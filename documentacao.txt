@@ -1,0 +1,24 @@
+
+# Documentação do Projeto
+
+## Objetivo
+Sistema de cadastro de trabalhadores e suas funções em um centro espiritual.
+
+## Estrutura das Tabelas
+
+- trabalhador(id, nome, data_nascimento, telefone, email, etc)
+- setor(id, nome)
+- funcao(id, nome, setor_id)
+- trabalhador_setor_funcao(id, trabalhador_id, setor_id, funcao_id, turno)
+
+## Fluxos
+1. Cadastrar trabalhador
+2. Associar setor e função com base na escolha do setor
+3. Seleção dinâmica de função no formulário com base no setor
+
+## Conexão com Banco
+Banco hospedado na Supabase
+- host: aws-0-sa-east-1.pooler.supabase.com
+- port: 5432
+- user: postgres.udwvdvyqouosxuatuhcz
+- database: postgres
