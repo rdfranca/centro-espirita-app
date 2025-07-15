@@ -45,7 +45,7 @@ def inserir():
     nome = request.form.get("nome")
     cpf = request.form.get("cpf")
     data_nascimento = request.form.get("data_nascimento")
-    telefone = request.form.get("telefone")
+    telefone = request.form.get("celular")
     email = request.form.get("email")
     setor_id = request.form.get("setor")
     funcao_id = request.form.get("funcao")
