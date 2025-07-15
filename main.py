@@ -1,31 +1,37 @@
 
-from flask import Flask, render_template, request, redirect
-
+from flask import Flask, render_template, request, redirect, url_for
+from app_env import conectar
 app = Flask(__name__)
-
-trabalhadores = []
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    conn = conectar()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM trabalhador")
+    trabalhadores = cur.fetchall()
+    conn.close()
+    return render_template("index.html", trabalhadores=trabalhadores)
 
 @app.route('/cadastrar', methods=['GET', 'POST'])
 def cadastrar():
+    conn = conectar()
+    cur = conn.cursor()
     if request.method == 'POST':
-        nome = request.form.get('nome')
-        if nome:
-            trabalhadores.append(nome)
-            return redirect('/')
-    return render_template('cadastrar.html')
+        nome = request.form['nome']
+        cur.execute("INSERT INTO trabalhador (nome) VALUES (%s)", (nome,))
+        conn.commit()
+        return redirect(url_for('index'))
+    conn.close()
+    return render_template("cadastrar.html")
 
-@app.route('/buscar')
-def buscar():
-    nome = request.args.get('nome', '').lower()
-    if nome:
-        resultados = [n for n in trabalhadores if nome in n.lower()]
-    else:
-        resultados = []
-    return render_template('buscar.html', resultados=resultados)
+@app.route('/funcoes/<int:setor_id>')
+def funcoes(setor_id):
+    conn = conectar()
+    cur = conn.cursor()
+    cur.execute("SELECT id, nome FROM funcao WHERE setor_id = %s", (setor_id,))
+    funcoes = cur.fetchall()
+    conn.close()
+    return {'funcoes': funcoes}
 
 if __name__ == '__main__':
     app.run(debug=True)

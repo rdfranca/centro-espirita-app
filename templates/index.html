@@ -1,12 +1,14 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Centro Espírita - Início</title>
-</head>
+<head><title>Trabalhadores</title></head>
 <body>
-    <h1>Bem-vindo ao Sistema do Centro Espírita</h1>
-    <a href="/cadastrar"><button>Cadastrar Trabalhador</button></a>
-    <a href="/buscar"><button>Buscar Trabalhador</button></a>
+    <h1>Trabalhadores</h1>
+    <ul>
+    {% for trab in trabalhadores %}
+        <li>{{ trab[1] }}</li>
+    {% endfor %}
+    </ul>
+    <a href="{{ url_for('cadastrar') }}">Cadastrar novo</a>
 </body>
 </html>
