@@ -25,7 +25,7 @@ def buscar():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento, e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
-               ARRAY_AGG(DISTINCT s.nome) AS setoreses,
+               ARRAY_AGG(DISTINCT s.nome) AS setores,
                ARRAY_AGG(DISTINCT f.nome) AS funcoes,
                ARRAY_AGG(DISTINCT tsf.turno) AS turnos
         FROM trabalhador t
@@ -45,11 +45,11 @@ def cadastrar():
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
-    setoreses = cursor.fetchall()
+    setores = cursor.fetchall()
     cursor.execute("SELECT id, nome FROM funcao ORDER BY nome")
     funcoes = cursor.fetchall()
     conn.close()
-    return render_template("cadastrar.html", setoreses=setoreses, funcoes=funcoes)
+    return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
 
 @app.route("/inserir", methods=["POST"])
 def inserir():
@@ -81,11 +81,11 @@ def inserir():
         VALUES (%s, %s, %s, %s, %s, %s, %s)
     """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
 
-    setoreses = request.form.getlist("setoreses[]")
+    setores = request.form.getlist("setores[]")
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
 
-    for setores_id, funcao_id, turno in zip(setoreses, funcoes, turnos):
+    for setores_id, funcao_id, turno in zip(setores, funcoes, turnos):
         cursor.execute("""
             INSERT INTO trabalhador_setores_funcao (trabalhador_id, setores_id, funcao_id, turno)
             VALUES (%s, %s, %s, %s)
