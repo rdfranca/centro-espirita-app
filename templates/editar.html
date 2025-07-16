@@ -66,8 +66,9 @@
                 </div>
                 <div class="col">
                     <label>Função</label>
-                    <select name="funcoes[]" class="form-select" data-selected="{{ funcao_id }}" disabled>
-                        <option disabled selected>Carregando funções...</option>
+                    <select name="funcoes_display[]" class="form-select" disabled
+                       data-selected="{{ funcao_id }}" data-setor="{{ setor_id }}">
+                       <option disabled selected>Carregando funções...</option>
                     </select>
                     <input type="hidden" name="funcoes[]" value="{{ funcao_id }}">
                 </div>
