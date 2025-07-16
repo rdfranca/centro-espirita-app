@@ -12,15 +12,11 @@
                 <label for="password" class="form-label">Senha</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <div class="d-grid mb-3">
+            <div class="d-flex flex-column align-items-start gap-2 mt-4">
                 <button type="submit" class="btn btn-success">Entrar</button>
+                <a href="/cadastrar" class="btn btn-success">Cadastrar Novo Trabalhador</a>
             </div>
         </form>
-        <div class="d-grid mt-3">
-            <form action="/cadastrar">
-                <button type="submit" class="btn btn-success">Cadastrar Novo Trabalhador</button>
-            </form>
-        </div>
     </div>
 </div>
 {% endblock %}
