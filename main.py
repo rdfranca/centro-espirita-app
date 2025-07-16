@@ -29,6 +29,10 @@ def login():
             return "Usuário ou senha inválidos"
     return render_template('login.html')
 
+@app.route('/painel')
+def painel():
+    return render_template('index.html')
+
 
 @app.route("/buscar", methods=["GET"])
 def buscar():
