@@ -54,7 +54,7 @@
         <h4>Setores, Funções e Turnos</h4>
         <div id="vinculos">
             {% for setor_id, funcao_id, turno in vinculos %}
-            <div class="row align-items-end mb-3 vinculo">
+            <div class="vinculo" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                 <div class="col">
                     <label>Setor</label>
                     <select name="setores[]" class="form-select setor">
