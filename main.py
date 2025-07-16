@@ -41,9 +41,10 @@ def buscar():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.data_nascimento,
-               ARRAY_AGG(DISTINCT s.nome) AS setores,
-               ARRAY_AGG(DISTINCT f.nome) AS funcoes,
-               ARRAY_AGG(DISTINCT tsf.turno) AS turnos
+       t.profissao, t.rua, t.numero, t.bairro, t.cidade, t.estado,
+       ARRAY_AGG(DISTINCT s.nome) AS setores,
+       ARRAY_AGG(DISTINCT f.nome) AS funcoes,
+       ARRAY_AGG(DISTINCT tsf.turno) AS turnos
         FROM trabalhador t
         LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
         LEFT JOIN setores s ON tsf.setor_id = s.id
