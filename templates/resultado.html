@@ -5,15 +5,15 @@
 {% if resultados %}
     {% for r in resultados %}
     <div style="margin-bottom: 20px;">
-        <strong>Nome:</strong> {{ r[1] }}<br>
-        <strong>CPF:</strong> {{ r[2] }}<br>
-        <strong>Celular:</strong> {{ r[3] }}<br>
-        <strong>Profissão:</strong> {{ r[4] }}<br>
-        <strong>Nascimento:</strong> {{ r[5] }}<br>
-        <strong>Endereço:</strong> {{ r[7] }}, {{ r[6] }} - {{ r[8] }} - {{ r[9] }}/{{ r[10] }}<br>
-        <strong>Setores:</strong> {{ r[11]|join(', ') }}<br>
-        <strong>Funções:</strong> {{ r[12]|join(', ') }}<br>
-        <strong>Turnos:</strong> {{ r[13]|join(', ') }}
+        <strong>Nome:</strong> {{ r.nome or '' }}<br>
+        <strong>CPF:</strong> {{ r.cpf or '' }}<br>
+        <strong>Celular:</strong> {{ r.celular or '' }}<br>
+        <strong>Profissão:</strong> {{ r.profissao or '' }}<br>
+        <strong>Nascimento:</strong> {{ r.nascimento or '' }}<br>
+        <strong>Endereço:</strong> {{ r.rua or '' }}, {{ r.numero or '' }} - {{ r.bairro or '' }} - {{ r.cidade or '' }}/{{ r.estado or '' }}<br>
+        <strong>Setores:</strong> {{ r.setores | reject('equalto', None) | join(', ') }}<br>
+        <strong>Funções:</strong> {{ r.funcoes | reject('equalto', None) | join(', ') }}<br>
+        <strong>Turnos:</strong> {{ r.turnos | reject('equalto', None) | join(', ') }}
     </div>
     {% endfor %}
 {% else %}
