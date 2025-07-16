@@ -15,7 +15,7 @@ def conectar():
 
 @app.route("/")
 def index():
-    return redirect(url_for("painel"))
+    return redirect(url_for("login.html"))
 
 
 @app.route('/login', methods=['GET', 'POST'])
