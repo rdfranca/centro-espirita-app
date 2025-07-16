@@ -109,28 +109,44 @@ def funcoes_por_setor(setor_id):
 def inserir():
     conn = conectar()
     cursor = conn.cursor()
+
     nome = request.form.get("nome")
     cpf = request.form.get("cpf")
-    data_nascimento = request.form.get("data_nascimento")
+    data_nascimento = request.form.get("nascimento")
     celular = request.form.get("celular")
-    email = request.form.get("email")
-    setor_id = request.form.get("setor")
-    funcao_id = request.form.get("funcao")
-    turno = request.form.get("turno")
+    profissao = request.form.get("profissao")
+
+    cep = request.form.get("cep")
+    rua = request.form.get("rua")
+    numero = request.form.get("numero")
+    bairro = request.form.get("bairro")
+    cidade = request.form.get("cidade")
+    estado = request.form.get("estado")
+
+    setores = request.form.getlist("setores[]")
+    funcoes = request.form.getlist("funcoes[]")
+    turnos = request.form.getlist("turnos[]")
 
     cursor.execute("""
-        INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, email)
+        INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id
-    """, (nome, cpf, data_nascimento, celular, email))
+    """, (nome, cpf, data_nascimento, celular, profissao))
     trabalhador_id = cursor.fetchone()[0]
 
     cursor.execute("""
-        INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
-        VALUES (%s, %s, %s, %s)
-    """, (trabalhador_id, setor_id, funcao_id, turno))
+        INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
+
+    for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+        cursor.execute("""
+            INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
+            VALUES (%s, %s, %s, %s)
+        """, (trabalhador_id, setor_id, funcao_id, turno))
 
     conn.commit()
     conn.close()
 
     return redirect("/")
+
