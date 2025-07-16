@@ -24,18 +24,38 @@ def buscar():
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT t.id, t.nome, t.cpf, t.celular, t.data_nascimento,
+        SELECT t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
+               e.rua, e.numero, e.bairro, e.cidade, e.estado,
                ARRAY_AGG(DISTINCT s.nome) AS setores,
                ARRAY_AGG(DISTINCT f.nome) AS funcoes,
                ARRAY_AGG(DISTINCT tsf.turno) AS turnos
         FROM trabalhador t
+        LEFT JOIN endereco e ON t.id = e.trabalhador_id
         LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
         LEFT JOIN setores s ON tsf.setor_id = s.id
         LEFT JOIN funcao f ON tsf.funcao_id = f.id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
-        GROUP BY t.id
+        GROUP BY t.id, e.rua, e.numero, e.bairro, e.cidade, e.estado
     """, (f"%{nome}%", f"%{nome}%"))
-    resultados = cursor.fetchall()
+
+    resultados = [
+        {
+            "nome": r[0],
+            "cpf": r[1],
+            "celular": r[2],
+            "profissao": r[3],
+            "nascimento": r[4],
+            "rua": r[5],
+            "numero": r[6],
+            "bairro": r[7],
+            "cidade": r[8],
+            "estado": r[9],
+            "setores": r[10],
+            "funcoes": r[11],
+            "turnos": r[12],
+        }
+        for r in cursor.fetchall()
+    ]
     conn.close()
     return render_template("resultado.html", resultados=resultados)
 
