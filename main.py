@@ -15,7 +15,7 @@ def conectar():
 
 @app.route("/")
 def index():
-    return redirect(url_for("login"))
+    return redirect(url_for("painel"))
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -24,7 +24,7 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         if username == 'admin' and password == 'admin':
-            return redirect(url_for('index'))
+           return redirect(url_for('painel'))
         else:
             return "Usuário ou senha inválidos"
     return render_template('login.html')
