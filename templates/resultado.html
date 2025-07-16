@@ -11,9 +11,25 @@
         <strong>Profissão:</strong> {{ r.profissao or '' }}<br>
         <strong>Nascimento:</strong> {{ r.nascimento or '' }}<br>
         <strong>Endereço:</strong> {{ r.rua or '' }}, {{ r.numero or '' }} - {{ r.bairro or '' }} - {{ r.cidade or '' }}/{{ r.estado or '' }}<br>
-        <strong>Setores:</strong> {{ r.setores | reject('equalto', None) | join(', ') }}<br>
-        <strong>Funções:</strong> {{ r.funcoes | reject('equalto', None) | join(', ') }}<br>
-        <strong>Turnos:</strong> {{ r.turnos | reject('equalto', None) | join(', ') }}
+        <strong>Vínculos:</strong>
+<table class="table table-sm table-bordered">
+    <thead>
+        <tr>
+            <th>Setor</th>
+            <th>Função</th>
+            <th>Turno</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for v in r.vinculos %}
+        <tr>
+            <td>{{ v.setor }}</td>
+            <td>{{ v.funcao }}</td>
+            <td>{{ v.turno }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
     </div>
     {% endfor %}
 {% else %}
