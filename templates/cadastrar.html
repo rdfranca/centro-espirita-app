@@ -5,7 +5,10 @@
 <form action="/inserir" method="POST" action="/inserir" method="POST">
     <h2>Dados Pessoais</h2>
     <input type="text" name="nome" placeholder="Nome completo" required>
-    <input type="text" name="cpf" placeholder="CPF" maxlength="11" pattern="\d{11}" title="Digite 11 números" required>
+    <div class="mb-3">
+    <input type="text" name="cpf" id="cpf" maxlength="11" placeholder="CPF" required class="form-control">
+    <small id="cpfErro" style="color: red; display: none;">CPF inválido. Digite um CPF válido com 11 números.</small>
+    </div>
     <input type="text" name="celular" placeholder="Celular">
     <input type="text" name="profissao" placeholder="Profissão">
     <input type="date" name="nascimento" placeholder="Data de nascimento">
@@ -71,15 +74,49 @@ function aplicarEventosVinculo(vinculo) {
     });
 }
 
+function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+
+    function calcDigito(cpf, peso) {
+        let soma = 0;
+        for (let i = 0; i < peso.length; i++) {
+            soma += parseInt(cpf[i]) * peso[i];
+        }
+        let resto = soma % 11;
+        return resto < 2 ? 0 : 11 - resto;
+    }
+
+    const dig1 = calcDigito(cpf, [10,9,8,7,6,5,4,3,2]);
+    const dig2 = calcDigito(cpf + dig1, [11,10,9,8,7,6,5,4,3,2]);
+
+    return cpf[9] == dig1 && cpf[10] == dig2;
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+
+    // Validação de CPF antes do envio do formulário
+    const form = document.querySelector("form");
+    form.addEventListener("submit", function (e) {
+        const cpfInput = document.getElementById("cpf");
+        const erro = document.getElementById("cpfErro");
+        const cpf = cpfInput.value;
+
+        if (!validarCPF(cpf)) {
+            e.preventDefault();
+            erro.style.display = "block";
+            cpfInput.focus();
+        } else {
+            erro.style.display = "none";
+        }
+    });
 });
 
 function adicionarVinculo() {
     const container = document.getElementById("vinculos");
     const div = document.querySelector(".vinculo").cloneNode(true);
 
-    // Limpa os selects
     div.querySelector('select[name="setores[]"]').selectedIndex = 0;
     div.querySelector('select[name="funcoes[]"]').innerHTML = '<option disabled selected>Selecione o setor primeiro</option>';
     div.querySelector('select[name="turnos[]"]').selectedIndex = 0;
@@ -88,4 +125,5 @@ function adicionarVinculo() {
     container.appendChild(div);
 }
 </script>
+
 {% endblock %}
