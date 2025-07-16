@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1 style="margin-bottom: 20px;">Pesquisar Trabalhador</h1>
-<form action="/buscar" method="POST">
+<form action="/buscar" method="GET">
     <div class="form-group">
         <input type="text" name="termo" class="form-control" placeholder="Digite o nome ou CPF" required>
     </div>
