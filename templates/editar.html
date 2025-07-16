@@ -54,10 +54,11 @@
         <h4>Setores, Funções e Turnos</h4>
         <div id="vinculos">
             {% for setor_id, funcao_id, turno in vinculos %}
-                <div class="row align-items-end mb-3">
+                <div class="row align-items-end mb-3 vinculo">
                     <div class="col">
                         <label>Setor</label>
                         <select name="setores[]" class="form-select">
+                            <option disabled selected>Selecione o setor</option>
                             {% for id, nome in setores %}
                                 <option value="{{ id }}" {% if id == setor_id %}selected{% endif %}>{{ nome }}</option>
                             {% endfor %}
@@ -66,11 +67,7 @@
                     <div class="col">
                         <label>Função</label>
                         <select name="funcoes[]" class="form-select">
-                            {% for f_id, f_nome, f_setor_id in funcoes %}
-                                {% if f_setor_id == setor_id %}
-                                    <option value="{{ f_id }}" {% if f_id == funcao_id %}selected{% endif %}>{{ f_nome }}</option>
-                                {% endif %}
-                            {% endfor %}
+                            <option disabled selected>Selecione o setor primeiro</option>
                         </select>
                     </div>
                     <div class="col">
@@ -91,4 +88,44 @@
         </div>
     </form>
 </div>
+
+<script>
+function aplicarEventosVinculo(vinculo) {
+    const selectSetor = vinculo.querySelector('select[name="setores[]"]');
+    const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
+
+    if (!selectSetor || !selectFuncao) return;
+
+    function carregarFuncoes(setorId, funcaoSelecionada = null) {
+        fetch(`/funcoes/${setorId}`)
+            .then(response => response.json())
+            .then(data => {
+                selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
+                data.forEach(([id, nome]) => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = nome;
+                    if (funcaoSelecionada && funcaoSelecionada == id) opt.selected = true;
+                    selectFuncao.appendChild(opt);
+                });
+            });
+    }
+
+    // Carrega inicialmente se estiver preenchido (para edição)
+    if (selectSetor.value) {
+        const funcaoSelecionada = selectFuncao.getAttribute('data-selected');
+        carregarFuncoes(selectSetor.value, funcaoSelecionada);
+    }
+
+    selectSetor.addEventListener('change', function () {
+        carregarFuncoes(this.value);
+    });
+}
+
+// Executar nos vínculos ao carregar a página
+window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+});
+</script>
+
 {% endblock %}
