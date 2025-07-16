@@ -28,8 +28,8 @@ def buscar():
                ARRAY_AGG(DISTINCT f.nome) AS funcoes,
                ARRAY_AGG(DISTINCT tsf.turno) AS turnos
         FROM trabalhador t
-        LEFT JOIN trabalhador_setores_funcao tsf ON t.id = tsf.trabalhador_id
-        LEFT JOIN setores s ON tsf.setores_id = s.id
+        LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
+        LEFT JOIN setores s ON tsf.setor_id = s.id
         LEFT JOIN funcao f ON tsf.funcao_id = f.id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
         GROUP BY t.id
