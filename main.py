@@ -17,6 +17,27 @@ def conectar():
 def index():
     return render_template("index.html")
 
+@app.route("/buscar", methods=["GET"])
+def buscar():
+    nome = request.args.get("nome")
+    conn = conectar()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT t.id, t.nome, t.cpf, t.celular, t.data_nascimento,
+               ARRAY_AGG(DISTINCT s.nome) AS setores,
+               ARRAY_AGG(DISTINCT f.nome) AS funcoes,
+               ARRAY_AGG(DISTINCT tsf.turno) AS turnos
+        FROM trabalhador t
+        LEFT JOIN trabalhador_setores_funcao tsf ON t.id = tsf.trabalhador_id
+        LEFT JOIN setores s ON tsf.setores_id = s.id
+        LEFT JOIN funcao f ON tsf.funcao_id = f.id
+        WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
+        GROUP BY t.id
+    """, (f"%{nome}%", f"%{nome}%"))
+    resultados = cursor.fetchall()
+    conn.close()
+    return render_template("resultado.html", resultados=resultados)
+
 @app.route("/cadastrar")
 def cadastrar():
     conn = conectar()
