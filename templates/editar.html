@@ -10,7 +10,8 @@
         </div>
         <div class="mb-3">
             <label>CPF</label>
-            <input type="text" name="cpf" class="form-control" value="{{ trabalhador[2] }}" required>
+            <input type="text" name="cpf" id="cpf" class="form-control" value="{{ trabalhador[2] }}" maxlength="11" required>
+            <small id="cpfErro" style="color: red; display: none;">CPF inválido. Digite um CPF válido com 11 números.</small>
         </div>
         <div class="mb-3">
             <label>Celular</label>
@@ -198,6 +199,24 @@ function validarCPF(cpf) {
 
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+
+    // Validação do CPF
+    const cpfInput = document.getElementById('cpf');
+    const cpfErro = document.getElementById('cpfErro');
+
+    if (cpfInput && cpfErro) {
+        cpfInput.addEventListener('blur', function () {
+            const cpf = this.value;
+            if (!validarCPF(cpf)) {
+                cpfErro.style.display = 'block';
+                this.classList.add('is-invalid');
+                this.focus();
+            } else {
+                cpfErro.style.display = 'none';
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
 
     const cepInput = document.querySelector('input[name="cep"]');
     if (cepInput) {
