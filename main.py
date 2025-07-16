@@ -70,6 +70,7 @@ def buscar():
                 })
 
         resultados.append({
+            "id": t[0], 
             "nome": t[1],
             "cpf": t[2],
             "celular": t[3],
@@ -175,3 +176,79 @@ def inserir():
 
     return redirect("/")
 
+@app.route('/editar/<int:trabalhador_id>')
+def editar(trabalhador_id):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
+               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado
+        FROM trabalhador t
+        LEFT JOIN endereco e ON t.id = e.trabalhador_id
+        WHERE t.id = %s
+    """, (trabalhador_id,))
+    trabalhador = cursor.fetchone()
+
+    cursor.execute("SELECT id, nome FROM setores")
+    setores = cursor.fetchall()
+
+    cursor.execute("SELECT id, nome, setor_id FROM funcao")
+    funcoes = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT tsf.setor_id, tsf.funcao_id, tsf.turno
+        FROM trabalhador_setor_funcao tsf
+        WHERE tsf.trabalhador_id = %s
+    """, (trabalhador_id,))
+    vinculos = cursor.fetchall()
+
+    return render_template("editar.html", trabalhador=trabalhador, setores=setores, funcoes=funcoes, vinculos=vinculos)
+
+@app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
+def atualizar(trabalhador_id):
+    conn = conectar()
+    cursor = conn.cursor()
+
+    nome = request.form.get("nome")
+    cpf = request.form.get("cpf")
+    celular = request.form.get("celular")
+    profissao = request.form.get("profissao")
+    nascimento = request.form.get("nascimento")
+
+    cep = request.form.get("cep")
+    rua = request.form.get("rua")
+    numero = request.form.get("numero")
+    bairro = request.form.get("bairro")
+    cidade = request.form.get("cidade")
+    estado = request.form.get("estado")
+
+    setores = request.form.getlist("setores[]")
+    funcoes = request.form.getlist("funcoes[]")
+    turnos = request.form.getlist("turnos[]")
+
+    # Atualizar trabalhador
+    cursor.execute("""
+        UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s
+        WHERE id=%s
+    """, (nome, cpf, celular, profissao, nascimento, trabalhador_id))
+
+    # Atualizar endereço
+    cursor.execute("""
+        UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s
+        WHERE trabalhador_id=%s
+    """, (cep, rua, numero, bairro, cidade, estado, trabalhador_id))
+
+    # Apagar vínculos antigos
+    cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
+
+    # Inserir novos vínculos
+    for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+        cursor.execute("""
+            INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
+            VALUES (%s, %s, %s, %s)
+        """, (trabalhador_id, setor_id, funcao_id, turno))
+
+    conn.commit()
+    conn.close()
+    return redirect("/")
