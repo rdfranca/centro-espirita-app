@@ -1,101 +1,102 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Editar Trabalhador</h1>
-<form action="/atualizar/{{ trabalhador.id }}" method="POST">
-    <h2>Dados Pessoais</h2>
-    <input type="text" name="nome" value="{{ trabalhador.nome }}" placeholder="Nome completo" required>
-    <input type="text" name="cpf" value="{{ trabalhador.cpf }}" placeholder="CPF" required>
-    <input type="text" name="celular" value="{{ trabalhador.celular }}" placeholder="Celular">
-    <input type="text" name="profissao" value="{{ trabalhador.profissao }}" placeholder="Profissão">
-    <input type="date" name="nascimento" value="{{ trabalhador.nascimento }}" placeholder="Data de nascimento">
-
-    <h2>Endereço</h2>
-    <input type="text" name="cep" value="{{ trabalhador.cep }}" placeholder="CEP">
-    <input type="text" name="rua" value="{{ trabalhador.rua }}" placeholder="Rua">
-    <input type="text" name="numero" value="{{ trabalhador.numero }}" placeholder="Número">
-    <input type="text" name="bairro" value="{{ trabalhador.bairro }}" placeholder="Bairro">
-    <input type="text" name="cidade" value="{{ trabalhador.cidade }}" placeholder="Cidade">
-    <input type="text" name="estado" value="{{ trabalhador.estado }}" placeholder="Estado">
-
-    <h2>Setores, Funções e Turnos</h2>
-    <div id="vinculos">
-        {% for v in trabalhador.vinculos %}
-        <div class="vinculo" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
-            <label>Setor:</label>
-            <select name="setores[]" disabled>
-                {% for id, nome in setores %}
-                    <option value="{{ id }}" {% if id == v.setor_id %}selected{% endif %}>{{ nome }}</option>
-                {% endfor %}
-            </select>
-
-            <label>Função:</label>
-            <select name="funcoes[]" disabled>
-                {% for id, nome in funcoes_por_setor[v.setor_id] %}
-                    <option value="{{ id }}" {% if id == v.funcao_id %}selected{% endif %}>{{ nome }}</option>
-                {% endfor %}
-            </select>
-
-            <label>Turno:</label>
-            <select name="turnos[]" disabled>
-                <option value="Manhã" {% if v.turno == 'Manhã' %}selected{% endif %}>Manhã</option>
-                <option value="Tarde" {% if v.turno == 'Tarde' %}selected{% endif %}>Tarde</option>
-                <option value="Noite" {% if v.turno == 'Noite' %}selected{% endif %}>Noite</option>
-            </select>
-
-            <button type="button" class="btn btn-danger" onclick="removerVinculo(this)">❌</button>
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Editar Trabalhador</h1>
+    <form action="/atualizar/{{ trabalhador[0] }}" method="POST">
+        <h4>Dados Pessoais</h4>
+        <div class="mb-3">
+            <label>Nome completo</label>
+            <input type="text" name="nome" class="form-control" value="{{ trabalhador[1] }}" required>
         </div>
-        {% endfor %}
-    </div>
-    <button type="button" class="btn" onclick="adicionarVinculo()">Adicionar outro Setor</button>
+        <div class="mb-3">
+            <label>CPF</label>
+            <input type="text" name="cpf" class="form-control" value="{{ trabalhador[2] }}" required>
+        </div>
+        <div class="mb-3">
+            <label>Celular</label>
+            <input type="text" name="celular" class="form-control" value="{{ trabalhador[3] }}">
+        </div>
+        <div class="mb-3">
+            <label>Profissão</label>
+            <input type="text" name="profissao" class="form-control" value="{{ trabalhador[4] }}">
+        </div>
+        <div class="mb-3">
+            <label>Data de Nascimento</label>
+            <input type="date" name="nascimento" class="form-control" value="{{ trabalhador[5] }}">
+        </div>
 
-    <br><br>
-    <button type="submit" class="btn">Salvar Alterações</button>
-</form>
+        <h4>Endereço</h4>
+        <div class="mb-3">
+            <label>CEP</label>
+            <input type="text" name="cep" class="form-control" value="{{ trabalhador[6] }}">
+        </div>
+        <div class="mb-3">
+            <label>Rua</label>
+            <input type="text" name="rua" class="form-control" value="{{ trabalhador[7] }}">
+        </div>
+        <div class="mb-3">
+            <label>Número</label>
+            <input type="text" name="numero" class="form-control" value="{{ trabalhador[8] }}">
+        </div>
+        <div class="mb-3">
+            <label>Bairro</label>
+            <input type="text" name="bairro" class="form-control" value="{{ trabalhador[9] }}">
+        </div>
+        <div class="mb-3">
+            <label>Cidade</label>
+            <input type="text" name="cidade" class="form-control" value="{{ trabalhador[10] }}">
+        </div>
+        <div class="mb-3">
+            <label>Estado</label>
+            <input type="text" name="estado" class="form-control" value="{{ trabalhador[11] }}">
+        </div>
+
+        <h4>Setores, Funções e Turnos</h4>
+        <div id="vinculos">
+            {% for setor_id, funcao_id, turno in vinculos %}
+                <div class="row align-items-end mb-3 vinculo">
+                    <div class="col">
+                        <label>Setor</label>
+                        <select name="setores[]" class="form-select">
+                            <option disabled selected>Selecione o setor</option>
+                            {% for id, nome in setores %}
+                                <option value="{{ id }}" {% if id == setor_id %}selected{% endif %}>{{ nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label>Função</label>
+                        <select name="funcoes[]" class="form-select">
+                            <option disabled selected>Selecione o setor primeiro</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label>Turno</label>
+                        <select name="turnos[]" class="form-select">
+                            <option value="Manhã" {% if turno == 'Manhã' %}selected{% endif %}>Manhã</option>
+                            <option value="Tarde" {% if turno == 'Tarde' %}selected{% endif %}>Tarde</option>
+                            <option value="Noite" {% if turno == 'Noite' %}selected{% endif %}>Noite</option>
+                        </select>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="d-flex justify-content-between mt-4">
+            <a href="/" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-success">Salvar Alterações</button>
+        </div>
+    </form>
+</div>
 
 <script>
-function removerVinculo(botao) {
-    botao.parentElement.remove();
-}
-
-function adicionarVinculo() {
-    const container = document.getElementById("vinculos");
-    const div = document.createElement('div');
-    div.classList.add('vinculo');
-    div.style = "display: flex; gap: 10px; align-items: center; margin-bottom: 10px;";
-    div.innerHTML = `
-        <label>Setor:</label>
-        <select name="setores[]">
-            <option disabled selected>Selecione o setor</option>
-            {% for id, nome in setores %}
-                <option value="{{ id }}">{{ nome }}</option>
-            {% endfor %}
-        </select>
-
-        <label>Função:</label>
-        <select name="funcoes[]">
-            <option disabled selected>Selecione o setor primeiro</option>
-        </select>
-
-        <label>Turno:</label>
-        <select name="turnos[]">
-            <option disabled selected>Selecione o turno</option>
-            <option value="Manhã">Manhã</option>
-            <option value="Tarde">Tarde</option>
-            <option value="Noite">Noite</option>
-        </select>
-
-        <button type="button" class="btn btn-danger" onclick="removerVinculo(this)">❌</button>
-    `;
-    container.appendChild(div);
-    aplicarEventosVinculo(div);
-}
-
 function aplicarEventosVinculo(vinculo) {
     const selectSetor = vinculo.querySelector('select[name="setores[]"]');
     const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
 
-    selectSetor.addEventListener('change', function () {
-        const setorId = this.value;
+    if (!selectSetor || !selectFuncao) return;
+
+    function carregarFuncoes(setorId, funcaoSelecionada = null) {
         fetch(`/funcoes/${setorId}`)
             .then(response => response.json())
             .then(data => {
@@ -104,11 +105,27 @@ function aplicarEventosVinculo(vinculo) {
                     const opt = document.createElement('option');
                     opt.value = id;
                     opt.textContent = nome;
+                    if (funcaoSelecionada && funcaoSelecionada == id) opt.selected = true;
                     selectFuncao.appendChild(opt);
                 });
-            })
-            .catch(err => console.error("Erro ao buscar funções:", err));
+            });
+    }
+
+    // Carrega inicialmente se estiver preenchido (para edição)
+    if (selectSetor.value) {
+        const funcaoSelecionada = selectFuncao.getAttribute('data-selected');
+        carregarFuncoes(selectSetor.value, funcaoSelecionada);
+    }
+
+    selectSetor.addEventListener('change', function () {
+        carregarFuncoes(this.value);
     });
 }
+
+// Executar nos vínculos ao carregar a página
+window.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+});
 </script>
+
 {% endblock %}
