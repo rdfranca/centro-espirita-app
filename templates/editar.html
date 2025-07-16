@@ -54,33 +54,40 @@
         <h4>Setores, Funções e Turnos</h4>
         <div id="vinculos">
             {% for setor_id, funcao_id, turno in vinculos %}
-                <div class="row align-items-end mb-3 vinculo">
-                    <div class="col">
-                        <label>Setor</label>
-                        <select name="setores[]" class="form-select">
-                            <option disabled selected>Selecione o setor</option>
-                            {% for id, nome in setores %}
-                                <option value="{{ id }}" {% if id == setor_id %}selected{% endif %}>{{ nome }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label>Função</label>
-                        <select name="funcoes[]" class="form-select">
-                            <option disabled selected>Selecione o setor primeiro</option>
-                        </select>
-                    </div>
-                    <div class="col">
-                        <label>Turno</label>
-                        <select name="turnos[]" class="form-select">
-                            <option value="Manhã" {% if turno == 'Manhã' %}selected{% endif %}>Manhã</option>
-                            <option value="Tarde" {% if turno == 'Tarde' %}selected{% endif %}>Tarde</option>
-                            <option value="Noite" {% if turno == 'Noite' %}selected{% endif %}>Noite</option>
-                        </select>
-                    </div>
+            <div class="row align-items-end mb-3 vinculo">
+                <div class="col">
+                    <label>Setor</label>
+                    <select name="setores[]" class="form-select" disabled>
+                        {% for id, nome in setores %}
+                        <option value="{{ id }}" {% if id == setor_id %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="setores[]" value="{{ setor_id }}">
                 </div>
+                <div class="col">
+                    <label>Função</label>
+                    <select name="funcoes[]" class="form-select" data-selected="{{ funcao_id }}" disabled>
+                        <option disabled selected>Carregando funções...</option>
+                    </select>
+                    <input type="hidden" name="funcoes[]" value="{{ funcao_id }}">
+                </div>
+                <div class="col">
+                    <label>Turno</label>
+                    <select name="turnos[]" class="form-select" disabled>
+                        <option value="Manhã" {% if turno == 'Manhã' %}selected{% endif %}>Manhã</option>
+                        <option value="Tarde" {% if turno == 'Tarde' %}selected{% endif %}>Tarde</option>
+                        <option value="Noite" {% if turno == 'Noite' %}selected{% endif %}>Noite</option>
+                    </select>
+                    <input type="hidden" name="turnos[]" value="{{ turno }}">
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
+                </div>
+            </div>
             {% endfor %}
         </div>
+
+        <button type="button" class="btn btn-secondary mt-2" onclick="adicionarVinculo()">➕ Adicionar outro Setor</button>
 
         <div class="d-flex justify-content-between mt-4">
             <a href="/" class="btn btn-secondary">Cancelar</a>
@@ -91,8 +98,8 @@
 
 <script>
 function aplicarEventosVinculo(vinculo) {
-    const selectSetor = vinculo.querySelector('select[name="setores[]"]');
-    const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
+    const selectSetor = vinculo.querySelector('select[name="setores[]"]:not([disabled])');
+    const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]:not([disabled])');
 
     if (!selectSetor || !selectFuncao) return;
 
@@ -111,21 +118,74 @@ function aplicarEventosVinculo(vinculo) {
             });
     }
 
-    // Carrega inicialmente se estiver preenchido (para edição)
-    if (selectSetor.value) {
-        const funcaoSelecionada = selectFuncao.getAttribute('data-selected');
-        carregarFuncoes(selectSetor.value, funcaoSelecionada);
-    }
-
     selectSetor.addEventListener('change', function () {
         carregarFuncoes(this.value);
     });
 }
 
-// Executar nos vínculos ao carregar a página
+function adicionarVinculo() {
+    const container = document.getElementById("vinculos");
+    const div = document.createElement('div');
+    div.className = 'row align-items-end mb-3 vinculo';
+    div.innerHTML = `
+        <div class="col">
+            <label>Setor</label>
+            <select name="setores[]" class="form-select">
+                <option disabled selected>Selecione o setor</option>
+                {% for id, nome in setores %}
+                <option value="{{ id }}">{{ nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col">
+            <label>Função</label>
+            <select name="funcoes[]" class="form-select">
+                <option disabled selected>Selecione o setor primeiro</option>
+            </select>
+        </div>
+        <div class="col">
+            <label>Turno</label>
+            <select name="turnos[]" class="form-select">
+                <option value="Manhã">Manhã</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noite">Noite</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
+        </div>
+    `;
+    container.appendChild(div);
+    aplicarEventosVinculo(div);
+}
+
+// Ativa a exclusão dos vínculos
+document.addEventListener('click', function (e) {
+    if (e.target.classList.contains('remover-vinculo')) {
+        e.target.closest('.vinculo').remove();
+    }
+});
+
 window.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+    document.querySelectorAll('.vinculo').forEach(vinculo => {
+        const selectSetor = vinculo.querySelector('select[name="setores[]"]');
+        const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
+        const funcaoSelecionada = selectFuncao.getAttribute('data-selected');
+        if (selectSetor && selectFuncao) {
+            fetch(`/funcoes/${selectSetor.value}`)
+                .then(res => res.json())
+                .then(data => {
+                    selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
+                    data.forEach(([id, nome]) => {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.textContent = nome;
+                        if (funcaoSelecionada == id) opt.selected = true;
+                        selectFuncao.appendChild(opt);
+                    });
+                });
+        }
+    });
 });
 </script>
-
 {% endblock %}
