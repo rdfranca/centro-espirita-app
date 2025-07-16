@@ -45,17 +45,17 @@ def inserir():
     nome = request.form.get("nome")
     cpf = request.form.get("cpf")
     data_nascimento = request.form.get("data_nascimento")
-    telefone = request.form.get("celular")
+    celular = request.form.get("celular")
     email = request.form.get("email")
     setor_id = request.form.get("setor")
     funcao_id = request.form.get("funcao")
     turno = request.form.get("turno")
 
     cursor.execute("""
-        INSERT INTO trabalhador (nome, cpf, data_nascimento, telefone, email)
+        INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, email)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id
-    """, (nome, cpf, data_nascimento, telefone, email))
+    """, (nome, cpf, data_nascimento, celular, email))
     trabalhador_id = cursor.fetchone()[0]
 
     cursor.execute("""
