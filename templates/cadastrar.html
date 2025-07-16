@@ -132,20 +132,33 @@ document.getElementById("cep").addEventListener("blur", function () {
         return;
     }
 
+    const rua = document.querySelector('input[name="rua"]');
+    const bairro = document.querySelector('input[name="bairro"]');
+    const cidade = document.querySelector('input[name="cidade"]');
+    const estado = document.querySelector('input[name="estado"]');
+
+    rua.value = bairro.value = cidade.value = estado.value = "Carregando...";
+    rua.disabled = bairro.disabled = cidade.disabled = estado.disabled = true;
+
     fetch(`https://viacep.com.br/ws/${cep}/json/`)
         .then(res => res.json())
         .then(data => {
             if (data.erro) {
                 alert("CEP não encontrado.");
-                return;
+                rua.value = bairro.value = cidade.value = estado.value = "";
+            } else {
+                rua.value = data.logradouro;
+                bairro.value = data.bairro;
+                cidade.value = data.localidade;
+                estado.value = data.uf;
             }
-
-            document.querySelector('input[name="rua"]').value = data.logradouro;
-            document.querySelector('input[name="bairro"]').value = data.bairro;
-            document.querySelector('input[name="cidade"]').value = data.localidade;
-            document.querySelector('input[name="estado"]').value = data.uf;
         })
-        .catch(() => alert("Erro ao buscar o CEP. Tente novamente."));
+        .catch(() => {
+            alert("Erro ao buscar o CEP. Tente novamente.");
+        })
+        .finally(() => {
+            rua.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
+        });
 });
 </script>
 
