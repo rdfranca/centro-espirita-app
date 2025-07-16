@@ -109,6 +109,24 @@ def funcoes_por_setor(setor_id):
     return jsonify(funcoes)
 
 
+def validar_cpf(cpf):
+    if not cpf.isdigit() or len(cpf) != 11:
+        return False
+
+    if cpf == cpf[0] * 11:
+        return False
+
+    def calc_digito(cpf, peso):
+        soma = sum(int(dig) * p for dig, p in zip(cpf, peso))
+        resto = soma % 11
+        return '0' if resto < 2 else str(11 - resto)
+
+    digito1 = calc_digito(cpf[:9], range(10, 1, -1))
+    digito2 = calc_digito(cpf[:9] + digito1, range(11, 1, -1))
+
+    return cpf[-2:] == digito1 + digito2
+
+
 @app.route("/inserir", methods=["POST"])
 def inserir():
     conn = conectar()
@@ -116,6 +134,9 @@ def inserir():
 
     nome = request.form.get("nome")
     cpf = request.form.get("cpf")
+    if not validar_cpf(cpf):
+        return "CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", 400
+
     data_nascimento = request.form.get("nascimento")
     celular = request.form.get("celular")
     profissao = request.form.get("profissao")

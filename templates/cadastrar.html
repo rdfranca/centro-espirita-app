@@ -5,7 +5,7 @@
 <form action="/inserir" method="POST" action="/inserir" method="POST">
     <h2>Dados Pessoais</h2>
     <input type="text" name="nome" placeholder="Nome completo" required>
-    <input type="text" name="cpf" placeholder="CPF" required>
+    <input type="text" name="cpf" placeholder="CPF" maxlength="11" pattern="\d{11}" title="Digite 11 números" required>
     <input type="text" name="celular" placeholder="Celular">
     <input type="text" name="profissao" placeholder="Profissão">
     <input type="date" name="nascimento" placeholder="Data de nascimento">
