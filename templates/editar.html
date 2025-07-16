@@ -176,49 +176,49 @@ function adicionarVinculo() {
 document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
 
-     const cepInput = document.querySelector('input[name="cep"]');
+    const cepInput = document.querySelector('input[name="cep"]');
     if (cepInput) {
         cepInput.addEventListener('blur', function () {
-    const cep = this.value.replace(/\D/g, '');
-    if (cep.length === 8) {
-        const ruaInput = document.querySelector('input[name="rua"]');
-        const bairroInput = document.querySelector('input[name="bairro"]');
-        const cidadeInput = document.querySelector('input[name="cidade"]');
-        const estadoInput = document.querySelector('input[name="estado"]');
+            const cep = this.value.replace(/\D/g, '');
+            if (cep.length === 8) {
+                const ruaInput = document.querySelector('input[name="rua"]');
+                const bairroInput = document.querySelector('input[name="bairro"]');
+                const cidadeInput = document.querySelector('input[name="cidade"]');
+                const estadoInput = document.querySelector('input[name="estado"]');
 
-        // Mostra mensagem temporária de carregamento
-        ruaInput.value = 'Carregando...';
-        bairroInput.value = 'Carregando...';
-        cidadeInput.value = 'Carregando...';
-        estadoInput.value = 'Carregando...';
+                // Mostra mensagem temporária de carregamento
+                ruaInput.value = 'Carregando...';
+                bairroInput.value = 'Carregando...';
+                cidadeInput.value = 'Carregando...';
+                estadoInput.value = 'Carregando...';
 
-        fetch(`https://viacep.com.br/ws/${cep}/json/`)
-            .then(response => response.json())
-            .then(data => {
-                if (!data.erro) {
-                    ruaInput.value = data.logradouro || '';
-                    bairroInput.value = data.bairro || '';
-                    cidadeInput.value = data.localidade || '';
-                    estadoInput.value = data.uf || '';
-                } else {
-                    ruaInput.value = '';
-                    bairroInput.value = '';
-                    cidadeInput.value = '';
-                    estadoInput.value = '';
-                    alert("CEP não encontrado.");
-                }
-            })
-            .catch(error => {
-                ruaInput.value = '';
-                bairroInput.value = '';
-                cidadeInput.value = '';
-                estadoInput.value = '';
-                console.error("Erro ao buscar o CEP:", error);
-                alert("Erro ao buscar o CEP.");
-            });
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.erro) {
+                            ruaInput.value = data.logradouro || '';
+                            bairroInput.value = data.bairro || '';
+                            cidadeInput.value = data.localidade || '';
+                            estadoInput.value = data.uf || '';
+                        } else {
+                            ruaInput.value = '';
+                            bairroInput.value = '';
+                            cidadeInput.value = '';
+                            estadoInput.value = '';
+                            alert("CEP não encontrado.");
+                        }
+                    })
+                    .catch(error => {
+                        ruaInput.value = '';
+                        bairroInput.value = '';
+                        cidadeInput.value = '';
+                        estadoInput.value = '';
+                        console.error("Erro ao buscar o CEP:", error);
+                        alert("Erro ao buscar o CEP.");
+                    });
+            }
+        });
     }
 });
-
-
 </script>
 {% endblock %}
