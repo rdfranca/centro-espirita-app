@@ -59,26 +59,30 @@ def buscar():
         """, (t[0],))
         vinculos = cursor.fetchall()
 
-        setores = list({v[0] for v in vinculos if v[0]})
-        funcoes = list({v[1] for v in vinculos if v[1]})
-        turnos = list({v[2] for v in vinculos if v[2]})
-
-        resultados.append({
-            "nome": t[1],
-            "cpf": t[2],
-            "celular": t[3],
-            "profissao": t[4],
-            "nascimento": t[5],
-            "cep": t[6],
-            "rua": t[7],
-            "numero": t[8],
-            "bairro": t[9],
-            "cidade": t[10],
-            "estado": t[11],
-            "setores": setores,
-            "funcoes": funcoes,
-            "turnos": turnos,
+        vinculos_formatados = []
+for v in vinculos:
+    setor, funcao, turno = v
+    if setor and funcao and turno:
+        vinculos_formatados.append({
+            "setor": setor,
+            "funcao": funcao,
+            "turno": turno
         })
+
+resultados.append({
+    "nome": t[1],
+    "cpf": t[2],
+    "celular": t[3],
+    "profissao": t[4],
+    "nascimento": t[5],
+    "cep": t[6],
+    "rua": t[7],
+    "numero": t[8],
+    "bairro": t[9],
+    "cidade": t[10],
+    "estado": t[11],
+    "vinculos": vinculos_formatados
+})
 
     conn.close()
     return render_template("resultado.html", resultados=resultados)
