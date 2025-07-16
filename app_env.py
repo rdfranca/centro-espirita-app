@@ -20,7 +20,7 @@ def index():
 
 @app.route("/buscar", methods=["POST"])
 def buscar():
-    termo = request.form["termo"]
+    nome = request.form["nome"]
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("""
@@ -35,7 +35,7 @@ def buscar():
         LEFT JOIN funcao f ON tsf.funcao_id = f.id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
         GROUP BY t.id, e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado
-    """, (f"%{termo}%", f"%{termo}%"))
+    """, (f"%{nome}%", f"%{nome}%"))
     resultados = cursor.fetchall()
     conn.close()
     return render_template("resultado.html", resultados=resultados)
