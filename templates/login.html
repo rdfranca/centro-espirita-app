@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 100vh;">
     <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
         <h3 class="text-center mb-4">Login</h3>
         <form method="post" action="/login">
@@ -12,15 +12,11 @@
                 <label for="password" class="form-label">Senha</label>
                 <input type="password" class="form-control" id="password" name="password" required>
             </div>
-            <div class="d-grid">
+            <div class="d-grid gap-2">
                 <button type="submit" class="btn btn-primary">Entrar</button>
+                <a href="/cadastrar" class="btn btn-outline-secondary">Cadastrar Novo Trabalhador</a>
             </div>
         </form>
-        <div class="text-center mt-3">
-            <form action="/cadastrar">
-                <button type="submit" class="btn btn-link">Cadastrar Novo Trabalhador</button>
-            </form>
-        </div>
     </div>
 </div>
 {% endblock %}
