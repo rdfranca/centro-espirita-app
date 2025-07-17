@@ -252,3 +252,46 @@ def atualizar(trabalhador_id):
     conn.commit()
     conn.close()
     return redirect("/")
+
+@app.route('/api/relatorios')
+def api_relatorios():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
+            e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
+            s.nome AS setor, f.nome AS funcao, tsf.turno
+        FROM trabalhador t
+        LEFT JOIN endereco e ON t.id = e.trabalhador_id
+        LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
+        LEFT JOIN setores s ON tsf.setor_id = s.id
+        LEFT JOIN funcao f ON tsf.funcao_id = f.id
+    """
+
+    cursor.execute(query)
+    dados = cursor.fetchall()
+
+    lista = []
+    for row in dados:
+        lista.append({
+            "id": row[0],
+            "nome": row[1],
+            "cpf": row[2],
+            "celular": row[3],
+            "profissao": row[4],
+            "nascimento": row[5],
+            "cep": row[6],
+            "rua": row[7],
+            "numero": row[8],
+            "bairro": row[9],
+            "cidade": row[10],
+            "estado": row[11],
+            "setor": row[12],
+            "funcao": row[13],
+            "turno": row[14]
+        })
+
+    conn.close()
+    return jsonify(lista)
