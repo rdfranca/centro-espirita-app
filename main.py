@@ -259,7 +259,7 @@ def relatorios():
 
 @app.route('/api/relatorios')
 def api_relatorios():
-    conn = get_db_connection()
+    conn = conectar()
     cursor = conn.cursor()
 
     query = """
