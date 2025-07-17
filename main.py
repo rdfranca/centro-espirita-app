@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, jsonify, url_for
 import psycopg2
 import os
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
@@ -26,15 +27,24 @@ def index():
 def login():
     """
     Lida com a autenticação do usuário.
-    Atualmente, aceita 'admin'/'admin' como credenciais.
+    Agora verifica email e senha_hash no banco de dados.
     """
     if request.method == 'POST':
-        username = request.form.get('username')
+        email = request.form.get('username') # Mantido 'username' para compatibilidade com o HTML atual do login
         password = request.form.get('password')
-        if username == 'admin' and password == 'admin':
+
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, senha_hash FROM trabalhador WHERE email = %s", (email,))
+        trabalhador_data = cursor.fetchone()
+        conn.close()
+
+        if trabalhador_data and trabalhador_data[1] and check_password_hash(trabalhador_data[1], password):
+            # Autenticação bem-sucedida
+            # Você pode armazenar o ID do trabalhador em uma sessão aqui, se necessário
             return redirect(url_for('painel'))
         else:
-            return "Usuário ou senha inválidos"
+            return "Usuário (Email) ou senha inválidos", 401
     return render_template('login.html')
 
 @app.route('/painel')
@@ -74,7 +84,7 @@ def buscar():
         vinculos_formatados = []
         for v in vinculos:
             setor, funcao, turno = v
-            if setor and funcao and turno: # Garante que apenas vínculos completos sejam adicionados
+            if setor and funcao and turno:
                 vinculos_formatados.append({
                     "setor": setor,
                     "funcao": funcao,
@@ -82,7 +92,7 @@ def buscar():
                 })
 
         resultados.append({
-            "id": t[0], 
+            "id": t[0],
             "nome": t[1],
             "cpf": t[2],
             "celular": t[3],
@@ -125,7 +135,6 @@ def api_funcoes_por_setor(setor_id):
     cursor.execute('SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome', (setor_id,))
     funcoes = cursor.fetchall()
     conn.close()
-    # Retorna uma lista de dicionários para facilitar o consumo no JS
     return jsonify([{'id': f[0], 'nome': f[1]} for f in funcoes])
 
 def validar_cpf(cpf):
@@ -136,7 +145,7 @@ def validar_cpf(cpf):
     if not cpf.isdigit() or len(cpf) != 11:
         return False
 
-    if cpf == cpf[0] * 11: # Verifica CPFs com todos os dígitos iguais
+    if cpf == cpf[0] * 11:
         return False
 
     def calc_digito(cpf_parte, peso_lista):
@@ -152,7 +161,7 @@ def validar_cpf(cpf):
 @app.route("/inserir", methods=["POST"])
 def inserir():
     """
-    Insere um novo trabalhador, seu endereço e seus vínculos de setor/função/turno no banco de dados.
+    Insere um novo trabalhador, seu endereço, email, senha e seus vínculos de setor/função/turno no banco de dados.
     """
     conn = conectar()
     cursor = conn.cursor()
@@ -160,11 +169,16 @@ def inserir():
     nome = request.form.get("nome")
     cpf = request.form.get("cpf")
     if not validar_cpf(cpf):
+        conn.close()
         return "CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", 400
 
     data_nascimento = request.form.get("nascimento")
     celular = request.form.get("celular")
     profissao = request.form.get("profissao")
+
+    email = request.form.get("email")
+    password = request.form.get("password")
+    hashed_password = generate_password_hash(password)
 
     cep = request.form.get("cep")
     rua = request.form.get("rua")
@@ -178,10 +192,10 @@ def inserir():
     turnos = request.form.getlist("turnos[]")
 
     cursor.execute("""
-        INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao, email, senha_hash)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         RETURNING id
-    """, (nome, cpf, data_nascimento, celular, profissao))
+    """, (nome, cpf, data_nascimento, celular, profissao, email, hashed_password))
     trabalhador_id = cursor.fetchone()[0]
 
     cursor.execute("""
@@ -209,19 +223,20 @@ def editar(trabalhador_id):
     conn = conectar()
     cursor = conn.cursor()
 
+    # Adicionado email e senha_hash na seleção
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado
+               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, t.email, t.senha_hash
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         WHERE t.id = %s
     """, (trabalhador_id,))
     trabalhador = cursor.fetchone()
 
-    cursor.execute("SELECT id, nome FROM setores ORDER BY nome") # Adicionado ORDER BY
+    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
     setores = cursor.fetchall()
 
-    cursor.execute("SELECT id, nome, setor_id FROM funcao ORDER BY nome") # Adicionado ORDER BY
+    cursor.execute("SELECT id, nome, setor_id FROM funcao ORDER BY nome")
     funcoes = cursor.fetchall()
 
     cursor.execute("""
@@ -247,6 +262,25 @@ def atualizar(trabalhador_id):
     profissao = request.form.get("profissao")
     nascimento = request.form.get("nascimento")
 
+    email = request.form.get("email") # NOVO: Captura o email
+    password = request.form.get("password") # NOVO: Captura a senha
+
+    # Apenas atualiza o hash da senha se uma nova senha for fornecida
+    if password:
+        hashed_password = generate_password_hash(password)
+        cursor.execute("""
+            UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
+            email=%s, senha_hash=%s
+            WHERE id=%s
+        """, (nome, cpf, celular, profissao, nascimento, email, hashed_password, trabalhador_id))
+    else:
+        cursor.execute("""
+            UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
+            email=%s
+            WHERE id=%s
+        """, (nome, cpf, celular, profissao, nascimento, email, trabalhador_id))
+
+
     cep = request.form.get("cep")
     rua = request.form.get("rua")
     numero = request.form.get("numero")
@@ -254,15 +288,6 @@ def atualizar(trabalhador_id):
     cidade = request.form.get("cidade")
     estado = request.form.get("estado")
 
-    setores = request.form.getlist("setores[]")
-    funcoes = request.form.getlist("funcoes[]")
-    turnos = request.form.getlist("turnos[]")
-
-    # Atualizar trabalhador
-    cursor.execute("""
-        UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s
-        WHERE id=%s
-    """, (nome, cpf, celular, profissao, nascimento, trabalhador_id))
 
     # Atualizar endereço
     cursor.execute("""
@@ -322,10 +347,11 @@ def api_relatorios():
     cursor = conn.cursor()
 
     query = """
-        SELECT 
+        SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
             e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
-            s.nome AS setor, f.nome AS funcao, tsf.turno
+            s.nome AS setor, f.nome AS funcao, tsf.turno,
+            t.email -- Adicionado email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
@@ -353,7 +379,8 @@ def api_relatorios():
             "estado": row[11],
             "setor": row[12],
             "funcao": row[13],
-            "turno": row[14]
+            "turno": row[14],
+            "email": row[15] # Adicionado email
         })
 
     conn.close()
@@ -369,9 +396,7 @@ def api_setores_para_filtro():
     cursor.execute('SELECT id, nome FROM setores ORDER BY nome')
     setores = cursor.fetchall()
     conn.close()
-    # Retorna uma lista de dicionários para facilitar o consumo no JS
     return jsonify([{'id': s[0], 'nome': s[1]} for s in setores])
 
 if __name__ == '__main__':
-    # Apenas para desenvolvimento local. Em produção, use um WSGI server.
     app.run(debug=True)
