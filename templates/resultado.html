@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-5"> {# Adicionado container e mt-5 para centralizar e dar espaço #}
+<div class="container mt-5">
     <h1>Resultado da Busca</h1>
     {% if resultados %}
         {% for r in resultados %}
-        <div class="card mb-4" id="trabalhador-{{ r.id }}"> {# Adicionado card e ID para fácil remoção #}
+        <div class="card mb-4" id="trabalhador-{{ r.id }}">
             <div class="card-body">
                 <h5 class="card-title">{{ r.nome or 'Nome Não Informado' }}</h5>
                 <p class="card-text">
@@ -17,10 +17,10 @@
 
                 {% if r.vinculos %}
                 <h6 class="card-subtitle mb-2 text-muted">Vínculos:</h6>
-                <div class="table-responsive"> {# Adicionado para tabelas responsivas #}
-                    <table class="table table-sm table-bordered"> {# Classes Bootstrap para tabela #}
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
                         <thead>
-                            <tr class="table-light"> {# Cor de fundo para o cabeçalho #}
+                            <tr class="table-light">
                                 <th>Setor</th>
                                 <th>Função</th>
                                 <th>Turno</th>
@@ -42,18 +42,17 @@
                 {% endif %}
 
                 <!-- Botões de ação -->
-                <div class="mt-3 d-flex justify-content-end"> {# Alinha os botões à direita #}
+                <div class="mt-3 d-flex justify-content-end">
                     <a href="{{ url_for('editar', trabalhador_id=r.id) }}" class="btn btn-warning me-2">✏️ Editar</a>
                     <button type="button" class="btn btn-danger" onclick="confirmarExclusao({{ r.id }}, '{{ r.nome | e }}')">🗑️ Excluir</button>
-                    {# Adicionado onclick para chamar a função JS #}
                 </div>
             </div>
         </div>
         {% endfor %}
     {% else %}
-        <p class="alert alert-info">Nenhum resultado encontrado.</p> {# Usando classe alert do Bootstrap #}
+        <p class="alert alert-info">Nenhum resultado encontrado.</p>
     {% endif %}
-    <a href="/" class="btn btn-primary mt-4">Voltar</a> {# Usando classe btn-primary do Bootstrap #}
+    <a href="/" class="btn btn-primary mt-4">Voltar</a>
 </div>
 
 <!-- Modal de Confirmação de Exclusão (Customizado) -->
@@ -81,49 +80,79 @@ let trabalhadorIdParaExcluir = null;
 
 // Função para exibir o modal de confirmação
 function confirmarExclusao(trabalhadorId, trabalhadorNome) {
+    console.log("1. confirmarExclusao chamada com ID:", trabalhadorId, "Nome:", trabalhadorNome);
     trabalhadorIdParaExcluir = trabalhadorId;
     $('#nomeTrabalhadorExcluir').text(trabalhadorNome); // Atualiza o nome no modal
+    
+    // Verifica se bootstrap.Modal está disponível
+    if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal === 'undefined') {
+        console.error("Erro: Bootstrap JavaScript (bootstrap.bundle.min.js) não foi carregado ou está em uma versão incompatível.");
+        // Fallback simples se o modal não puder ser exibido
+        if (window.confirm(`Tem certeza que deseja excluir ${trabalhadorNome}?`)) {
+            executarExclusao();
+        }
+        return;
+    }
+
     const myModal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
     myModal.show();
+    console.log("2. Modal de confirmação exibido.");
 }
 
-// Evento de clique no botão "Excluir" dentro do modal
-document.getElementById('btnConfirmarExclusao').addEventListener('click', function() {
+// Função para executar a exclusão (separada para ser chamada do modal ou fallback)
+function executarExclusao() {
     if (trabalhadorIdParaExcluir !== null) {
-        // Esconde o modal
-        const myModal = bootstrap.Modal.getInstance(document.getElementById('confirmarExclusaoModal'));
-        myModal.hide();
-
-        // Envia a requisição DELETE para o backend
+        console.log("3. Botão 'Excluir' do modal clicado ou fallback acionado. Enviando requisição para:", `/deletar/${trabalhadorIdParaExcluir}`);
+        
         fetch(`/deletar/${trabalhadorIdParaExcluir}`, {
-            method: 'POST', // Usamos POST para simplicidade com formulários HTML, mas DELETE seria mais RESTful se fosse uma API pura
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log("4. Resposta da requisição recebida. Status:", response.status);
+            if (!response.ok) {
+                // Se a resposta não for OK (ex: 404, 500), lança um erro para o .catch
+                return response.json().then(err => { throw new Error(err.message || "Erro desconhecido no servidor."); });
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log("5. Dados da resposta:", data);
             if (data.success) {
-                // Remove o bloco do trabalhador da interface
+                console.log("6. Exclusão bem-sucedida no backend. Removendo elemento da interface.");
                 const elementoTrabalhador = document.getElementById(`trabalhador-${trabalhadorIdParaExcluir}`);
                 if (elementoTrabalhador) {
                     elementoTrabalhador.remove();
-                    // Opcional: exibir uma mensagem de sucesso temporária
-                    // alert("Trabalhador excluído com sucesso!"); // Substituir por um toast/snackbar
+                    console.log("7. Elemento removido da DOM.");
                 }
             } else {
-                // Exibir mensagem de erro
-                console.error("Erro ao excluir:", data.message);
-                // alert("Erro ao excluir trabalhador: " + data.message); // Substituir por um toast/snackbar
+                console.error("8. Erro reportado pelo backend:", data.message);
             }
         })
         .catch(error => {
-            console.error("Erro na requisição de exclusão:", error);
-            // alert("Erro de rede ou servidor ao excluir trabalhador."); // Substituir por um toast/snackbar
+            console.error("9. Erro na requisição de exclusão (rede ou servidor):", error);
         })
         .finally(() => {
             trabalhadorIdParaExcluir = null; // Limpa o ID após a tentativa de exclusão
+            console.log("10. Processo de exclusão finalizado.");
         });
+    }
+}
+
+// Evento de clique no botão "Excluir" dentro do modal
+document.getElementById('btnConfirmarExclusao').addEventListener('click', executarExclusao);
+
+// Verificação de carregamento do jQuery e Bootstrap no DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof jQuery === 'undefined') {
+        console.error("Erro: jQuery não está carregado. O Bootstrap e DataTables dependem dele.");
+    }
+    if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal === 'undefined') {
+        console.error("Erro: Bootstrap JavaScript (bootstrap.bundle.min.js) não foi carregado ou está em uma versão incompatível.");
+    } else {
+        console.log("Bootstrap JavaScript carregado com sucesso.");
     }
 });
 </script>
