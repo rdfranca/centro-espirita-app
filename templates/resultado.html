@@ -84,26 +84,22 @@ function confirmarExclusao(trabalhadorId, trabalhadorNome) {
     trabalhadorIdParaExcluir = trabalhadorId;
     $('#nomeTrabalhadorExcluir').text(trabalhadorNome); // Atualiza o nome no modal
     
-    // Verifica se bootstrap.Modal está disponível
-    if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal === 'undefined') {
-        console.error("Erro: Bootstrap JavaScript (bootstrap.bundle.min.js) não foi carregado ou está em uma versão incompatível.");
-        // Fallback simples se o modal não puder ser exibido
-        if (window.confirm(`Tem certeza que deseja excluir ${trabalhadorNome}?`)) {
-            executarExclusao();
-        }
-        return;
-    }
-
+    // Agora que o Bootstrap JS é carregado no base.html, bootstrap.Modal DEVE estar disponível.
+    // Removido o fallback window.confirm, pois o modal deve funcionar.
     const myModal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
     myModal.show();
     console.log("2. Modal de confirmação exibido.");
 }
 
-// Função para executar a exclusão (separada para ser chamada do modal ou fallback)
+// Função para executar a exclusão (separada para ser chamada do modal)
 function executarExclusao() {
     if (trabalhadorIdParaExcluir !== null) {
-        console.log("3. Botão 'Excluir' do modal clicado ou fallback acionado. Enviando requisição para:", `/deletar/${trabalhadorIdParaExcluir}`);
+        console.log("3. Botão 'Excluir' do modal clicado. Enviando requisição para:", `/deletar/${trabalhadorIdParaExcluir}`);
         
+        // Esconde o modal ANTES de enviar a requisição
+        const myModal = bootstrap.Modal.getInstance(document.getElementById('confirmarExclusaoModal'));
+        if (myModal) myModal.hide(); // Verifica se o modal existe antes de tentar esconder
+
         fetch(`/deletar/${trabalhadorIdParaExcluir}`, {
             method: 'POST',
             headers: {
@@ -113,7 +109,6 @@ function executarExclusao() {
         .then(response => {
             console.log("4. Resposta da requisição recebida. Status:", response.status);
             if (!response.ok) {
-                // Se a resposta não for OK (ex: 404, 500), lança um erro para o .catch
                 return response.json().then(err => { throw new Error(err.message || "Erro desconhecido no servidor."); });
             }
             return response.json();
@@ -142,18 +137,10 @@ function executarExclusao() {
 }
 
 // Evento de clique no botão "Excluir" dentro do modal
+// Este listener é adicionado uma única vez quando o DOM está pronto
 document.getElementById('btnConfirmarExclusao').addEventListener('click', executarExclusao);
 
-// Verificação de carregamento do jQuery e Bootstrap no DOMContentLoaded
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof jQuery === 'undefined') {
-        console.error("Erro: jQuery não está carregado. O Bootstrap e DataTables dependem dele.");
-    }
-    if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal === 'undefined') {
-        console.error("Erro: Bootstrap JavaScript (bootstrap.bundle.min.js) não foi carregado ou está em uma versão incompatível.");
-    } else {
-        console.log("Bootstrap JavaScript carregado com sucesso.");
-    }
-});
+// Removidas as verificações de jQuery e Bootstrap no DOMContentLoaded,
+// pois agora eles são carregados no base.html e devem estar sempre disponíveis.
 </script>
 {% endblock %}
