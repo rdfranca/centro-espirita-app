@@ -3,33 +3,32 @@
 
     <h1 class="text-center mb-4">Relatório de Trabalhadores</h1>
 
-    <!-- Filtros -->
-  <div class="row mb-4 gx-4"> <div class="col-md-4">
-        <div class="mb-3">
-            <label for="filtroSetor" class="form-label">Setor:</label>
-            <select id="filtroSetor" class="form-select"></select>
+    <div class="row mb-4 gx-4">
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="filtroSetor" class="form-label">Setor:</label>
+                <select id="filtroSetor" class="form-select"></select>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="filtroFuncao" class="form-label">Função:</label>
+                <select id="filtroFuncao" class="form-select"></select>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="mb-3">
+                <label for="filtroTurno" class="form-label">Turno:</label>
+                <select id="filtroTurno" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="Manhã">Manhã</option>
+                    <option value="Tarde">Tarde</option>
+                    <option value="Noite">Noite</option>
+                </select>
+            </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="mb-3">
-            <label for="filtroFuncao" class="form-label">Função:</label>
-            <select id="filtroFuncao" class="form-select"></select>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="mb-3">
-            <label for="filtroTurno" class="form-label">Turno:</label>
-            <select id="filtroTurno" class="form-select">
-                <option value="">Todos</option>
-                <option value="Manhã">Manhã</option>
-                <option value="Tarde">Tarde</option>
-                <option value="Noite">Noite</option>
-            </select>
-        </div>
-    </div>
-</div>
 
-    <!-- Tabela -->
     <table id="tabelaRelatorio" class="display nowrap" style="width:100%">
         <thead>
             <tr>
@@ -53,7 +52,6 @@
     </table>
 </div>
 
-<!-- Estilos e scripts do DataTables -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css">
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -66,6 +64,29 @@
 
 <script>
 $(document).ready(function() {
+
+    // 1. Função auxiliar para popular os selects
+    function popularFiltro(url, selectId) {
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                const selectElement = $(selectId);
+                selectElement.empty(); // Limpa as opções existentes
+                selectElement.append('<option value="">Todos</option>'); // Adiciona a opção "Todos"
+
+                data.forEach(item => {
+                    // Aqui, use item.nome no value, pois é o que a coluna da tabela retorna (row[12] e row[13])
+                    selectElement.append(`<option value="${item.nome}">${item.nome}</option>`);
+                });
+            })
+            .catch(error => console.error(`Erro ao carregar ${selectId}:`, error));
+    }
+
+    // 2. Chama as novas rotas do backend para popular os filtros
+    popularFiltro('/api/setores_para_filtro', '#filtroSetor');
+    popularFiltro('/api/funcoes_para_filtro', '#filtroFuncao');
+
+    // 3. Carrega os dados da tabela
     fetch('/api/relatorios')
         .then(res => res.json())
         .then(data => {
@@ -83,9 +104,9 @@ $(document).ready(function() {
                     { data: 'bairro' },
                     { data: 'cidade' },
                     { data: 'estado' },
-                    { data: 'setor' },
-                    { data: 'funcao' },
-                    { data: 'turno' }
+                    { data: 'setor' },   // Coluna 11
+                    { data: 'funcao' },  // Coluna 12
+                    { data: 'turno' }    // Coluna 13
                 ],
                 dom: 'Bfrtip',
                 buttons: [
@@ -94,24 +115,24 @@ $(document).ready(function() {
                 ]
             });
 
-            // Preencher filtros
+            // Removida a lógica de preencher filtros a partir dos dados da tabela,
+            // pois agora eles são populados diretamente do banco de dados.
+            /*
             const setores = new Set();
             const funcoes = new Set();
-
             data.forEach(item => {
                 setores.add(item.setor);
                 funcoes.add(item.funcao);
             });
-
             setores.forEach(s => {
                 $('#filtroSetor').append(`<option value="${s}">${s}</option>`);
             });
-
             funcoes.forEach(f => {
                 $('#filtroFuncao').append(`<option value="${f}">${f}</option>`);
             });
+            */
 
-            // Filtragem dinâmica
+            // 4. Filtragem dinâmica (permanece a mesma, pois já funciona com os valores dos selects)
             $('#filtroSetor, #filtroFuncao, #filtroTurno').on('change', function () {
                 const setor = $('#filtroSetor').val();
                 const funcao = $('#filtroFuncao').val();
