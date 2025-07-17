@@ -25,6 +25,18 @@
             <input type="text" name="profissao" id="profissao" placeholder="Profissão" class="form-control">
         </div>
         <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" name="email" id="email" placeholder="Email" required class="form-control">
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Senha</label>
+            <div class="input-group">
+                <input type="text" name="password" id="password" placeholder="Senha" required class="form-control">
+                <button class="btn btn-outline-secondary" type="button" id="generatePassword">Gerar Senha</button>
+            </div>
+            <small id="passwordStrength" class="text-muted">A senha deve conter letras maiúsculas e minúsculas, números e caracteres especiais.</small>
+        </div>
+        <div class="mb-3">
             <label for="nascimento" class="form-label">Data de nascimento</label>
             <input type="date" name="nascimento" id="nascimento" placeholder="Data de nascimento" class="form-control">
         </div>
@@ -106,15 +118,15 @@ function aplicarEventosVinculo(vinculo) {
     if (selectSetor && selectFuncao) { // Verificação para garantir que os elementos existem
         selectSetor.addEventListener('change', function () {
             const setorId = this.value;
-            fetch(`/funcoes/${setorId}`)
+            fetch(`/api/funcoes_por_setor/${setorId}`) // Alterado para a nova API
                 .then(response => response.json())
                 .then(data => {
                     console.log("Funções recebidas:", data);
                     selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
-                    data.forEach(([id, nome]) => {
+                    data.forEach(item => { // Iterar sobre objetos agora
                         const opt = document.createElement('option');
-                        opt.value = id;
-                        opt.textContent = nome;
+                        opt.value = item.id; // Acessar item.id
+                        opt.textContent = item.nome; // Acessar item.nome
                         selectFuncao.appendChild(opt);
                     });
                 })
@@ -235,44 +247,51 @@ document.addEventListener('DOMContentLoaded', function () {
                 rua.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
             });
     });
+
+    // NOVO CÓDIGO JAVASCRIPT PARA GERAÇÃO DE SENHA
+    const generatePasswordButton = document.getElementById('generatePassword');
+    const passwordInput = document.getElementById('password');
+
+    if (generatePasswordButton && passwordInput) {
+        generatePasswordButton.addEventListener('click', function () {
+            const newPassword = generateStrongPassword(12); // Gera uma senha de 12 caracteres
+            passwordInput.value = newPassword;
+        });
+    }
 });
 
-function adicionarVinculo() {
-    const container = document.getElementById("vinculos");
-    const div = document.createElement('div');
-    // Usando classes do Bootstrap para o novo vínculo também
-    div.className = 'row g-3 align-items-end mb-3 vinculo'; // G-3 para espaçamento entre colunas, align-items-end para alinhar botões
+function generateStrongPassword(length) {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+    let password = "";
+    
+    // Garante que a senha tenha pelo menos um de cada tipo
+    // Adiciona um caracter de cada tipo e depois completa o restante
+    const types = [
+        "abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "0123456789",
+        "!@#$%^&*()_+~`|}{[]:;?><,./-="
+    ];
 
-    div.innerHTML = `
-        <div class="col">
-            <label for="setores[]" class="form-label">Setor:</label>
-            <select name="setores[]" class="form-select setor">
-                <option disabled selected>Selecione o setor</option>
-                {% for id, nome in setores %}
-                    <option value="{{ id }}">{{ nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col">
-            <label for="funcoes[]" class="form-label">Função:</label>
-            <select name="funcoes[]" class="form-select funcao">
-                <option disabled selected>Selecione o setor primeiro</option>
-            </select>
-        </div>
-        <div class="col">
-            <label for="turnos[]" class="form-label">Turno:</label>
-            <select name="turnos[]" class="form-select">
-                <option value="Manhã">Manhã</option>
-                <option value="Tarde">Tarde</option>
-                <option value="Noite">Noite</option>
-            </select>
-        </div>
-        <div class="col-auto"> {# col-auto para o botão X para que ele ocupe apenas o espaço necessário #}
-            <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
-        </div>
-    `;
-    container.appendChild(div);
-    aplicarEventosVinculo(div);
+    // Adiciona um de cada tipo
+    for (let i = 0; i < types.length; i++) {
+        password += getRandomChar(types[i]);
+    }
+    
+    // Preenche o restante da senha
+    for (let i = types.length; i < length; i++) {
+        password += getRandomChar(charset);
+    }
+
+    // Embaralha a senha para que os caracteres obrigatórios não fiquem sempre no início
+    password = password.split('').sort(() => 0.5 - Math.random()).join('');
+    
+    return password;
 }
+
+function getRandomChar(charset) {
+    return charset[Math.floor(Math.random() * charset.length)];
+}
+// FIM DO NOVO CÓDIGO JAVASCRIPT
 </script>
 {% endblock %}
