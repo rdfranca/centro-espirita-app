@@ -115,7 +115,6 @@ def cadastrar():
     conn.close()
     return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
 
-# Rota original /funcoes/<int:setor_id> renomeada e adaptada para uso mais genérico de API
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
 def api_funcoes_por_setor(setor_id):
     """
@@ -285,6 +284,30 @@ def atualizar(trabalhador_id):
     conn.close()
     return redirect("/")
 
+# NOVA ROTA PARA EXCLUIR TRABALHADOR
+@app.route('/deletar/<int:trabalhador_id>', methods=['POST'])
+def deletar_trabalhador(trabalhador_id):
+    """
+    Exclui um trabalhador e todos os seus dados relacionados (endereço e vínculos) do banco de dados.
+    """
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        # Excluir vínculos primeiro (se houver foreign keys)
+        cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id = %s", (trabalhador_id,))
+        # Excluir endereço
+        cursor.execute("DELETE FROM endereco WHERE trabalhador_id = %s", (trabalhador_id,))
+        # Excluir trabalhador
+        cursor.execute("DELETE FROM trabalhador WHERE id = %s", (trabalhador_id,))
+        conn.commit()
+        return jsonify({"success": True, "message": "Trabalhador excluído com sucesso!"}), 200
+    except Exception as e:
+        conn.rollback() # Em caso de erro, desfaz as operações
+        print(f"Erro ao excluir trabalhador: {e}")
+        return jsonify({"success": False, "message": f"Erro ao excluir trabalhador: {str(e)}"}), 500
+    finally:
+        conn.close()
+
 @app.route('/relatorios')
 def relatorios():
     """Renderiza a página de relatórios."""
@@ -336,7 +359,6 @@ def api_relatorios():
     conn.close()
     return jsonify(lista)
 
-# NOVAS ROTAS PARA OS FILTROS DE SETOR E FUNÇÃO (incluindo a renomeada)
 @app.route('/api/setores_para_filtro', methods=['GET'])
 def api_setores_para_filtro():
     """
@@ -349,21 +371,6 @@ def api_setores_para_filtro():
     conn.close()
     # Retorna uma lista de dicionários para facilitar o consumo no JS
     return jsonify([{'id': s[0], 'nome': s[1]} for s in setores])
-
-# Esta é a rota que foi renomeada e será usada para o filtro de função dependente
-# Ela já existia como /funcoes/<int:setor_id>
-# @app.route('/api/funcoes_para_filtro', methods=['GET']) # Rota original para todas as funções (não mais usada para filtro dependente)
-# def api_funcoes_para_filtro():
-#     """
-#     Retorna todas as funções disponíveis para uso em filtros, em formato JSON.
-#     Esta rota não será mais usada para o filtro dependente de função.
-#     """
-#     conn = conectar()
-#     cursor = conn.cursor()
-#     cursor.execute('SELECT id, nome FROM funcao ORDER BY nome')
-#     funcoes = cursor.fetchall()
-#     conn.close()
-#     return jsonify([{'id': f[0], 'nome': f[1]} for f in funcoes])
 
 if __name__ == '__main__':
     # Apenas para desenvolvimento local. Em produção, use um WSGI server.

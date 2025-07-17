@@ -1,46 +1,130 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Resultado da Busca</h1>
-{% if resultados %}
-    {% for r in resultados %}
-    <div style="margin-bottom: 30px; border-bottom: 1px solid #ccc; padding-bottom: 20px;">
-        <strong>Nome:</strong> {{ r.nome or '' }}<br>
-        <strong>CPF:</strong> {{ r.cpf or '' }}<br>
-        <strong>Celular:</strong> {{ r.celular or '' }}<br>
-        <strong>Profissão:</strong> {{ r.profissao or '' }}<br>
-        <strong>Nascimento:</strong> {{ r.nascimento or '' }}<br>
-        <strong>Endereço:</strong> {{ r.rua or '' }}, {{ r.numero or '' }} - {{ r.bairro or '' }} - {{ r.cidade or '' }}/{{ r.estado or '' }}<br>
+<div class="container mt-5"> {# Adicionado container e mt-5 para centralizar e dar espaço #}
+    <h1>Resultado da Busca</h1>
+    {% if resultados %}
+        {% for r in resultados %}
+        <div class="card mb-4" id="trabalhador-{{ r.id }}"> {# Adicionado card e ID para fácil remoção #}
+            <div class="card-body">
+                <h5 class="card-title">{{ r.nome or 'Nome Não Informado' }}</h5>
+                <p class="card-text">
+                    <strong>CPF:</strong> {{ r.cpf or '' }}<br>
+                    <strong>Celular:</strong> {{ r.celular or '' }}<br>
+                    <strong>Profissão:</strong> {{ r.profissao or '' }}<br>
+                    <strong>Nascimento:</strong> {{ r.nascimento or '' }}<br>
+                    <strong>Endereço:</strong> {{ r.rua or '' }}{% if r.numero %}, {{ r.numero }}{% endif %} - {{ r.bairro or '' }} - {{ r.cidade or '' }}/{{ r.estado or '' }}<br>
+                </p>
 
-        <div style="margin-top: 15px;">
-            <strong>Vínculos:</strong>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
-                <thead>
-                    <tr style="background-color: #f0f0f0;">
-                        <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ccc;">Setor</th>
-                        <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ccc;">Função</th>
-                        <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ccc;">Turno</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for v in r.vinculos %}
-                    <tr>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ v.setor }}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ v.funcao }}</td>
-                        <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ v.turno }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                {% if r.vinculos %}
+                <h6 class="card-subtitle mb-2 text-muted">Vínculos:</h6>
+                <div class="table-responsive"> {# Adicionado para tabelas responsivas #}
+                    <table class="table table-sm table-bordered"> {# Classes Bootstrap para tabela #}
+                        <thead>
+                            <tr class="table-light"> {# Cor de fundo para o cabeçalho #}
+                                <th>Setor</th>
+                                <th>Função</th>
+                                <th>Turno</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for v in r.vinculos %}
+                            <tr>
+                                <td>{{ v.setor }}</td>
+                                <td>{{ v.funcao }}</td>
+                                <td>{{ v.turno }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-muted">Nenhum vínculo encontrado.</p>
+                {% endif %}
 
-        <!-- Botão de editar -->
-        <div class="mt-3">
-            <a href="{{ url_for('editar', trabalhador_id=r.id) }}" class="btn btn-warning">✏️ Editar</a>
+                <!-- Botões de ação -->
+                <div class="mt-3 d-flex justify-content-end"> {# Alinha os botões à direita #}
+                    <a href="{{ url_for('editar', trabalhador_id=r.id) }}" class="btn btn-warning me-2">✏️ Editar</a>
+                    <button type="button" class="btn btn-danger" onclick="confirmarExclusao({{ r.id }}, '{{ r.nome | e }}')">🗑️ Excluir</button>
+                    {# Adicionado onclick para chamar a função JS #}
+                </div>
+            </div>
         </div>
+        {% endfor %}
+    {% else %}
+        <p class="alert alert-info">Nenhum resultado encontrado.</p> {# Usando classe alert do Bootstrap #}
+    {% endif %}
+    <a href="/" class="btn btn-primary mt-4">Voltar</a> {# Usando classe btn-primary do Bootstrap #}
+</div>
+
+<!-- Modal de Confirmação de Exclusão (Customizado) -->
+<div class="modal fade" id="confirmarExclusaoModal" tabindex="-1" aria-labelledby="confirmarExclusaoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmarExclusaoModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir o trabalhador <strong id="nomeTrabalhadorExcluir"></strong>? Esta ação é irreversível.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">Excluir</button>
+      </div>
     </div>
-    {% endfor %}
-{% else %}
-    <p>Nenhum resultado encontrado.</p>
-{% endif %}
-<a href="/" class="btn mt-4">Voltar</a>
+  </div>
+</div>
+
+<script>
+// Variável global para armazenar o ID do trabalhador a ser excluído
+let trabalhadorIdParaExcluir = null;
+
+// Função para exibir o modal de confirmação
+function confirmarExclusao(trabalhadorId, trabalhadorNome) {
+    trabalhadorIdParaExcluir = trabalhadorId;
+    $('#nomeTrabalhadorExcluir').text(trabalhadorNome); // Atualiza o nome no modal
+    const myModal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
+    myModal.show();
+}
+
+// Evento de clique no botão "Excluir" dentro do modal
+document.getElementById('btnConfirmarExclusao').addEventListener('click', function() {
+    if (trabalhadorIdParaExcluir !== null) {
+        // Esconde o modal
+        const myModal = bootstrap.Modal.getInstance(document.getElementById('confirmarExclusaoModal'));
+        myModal.hide();
+
+        // Envia a requisição DELETE para o backend
+        fetch(`/deletar/${trabalhadorIdParaExcluir}`, {
+            method: 'POST', // Usamos POST para simplicidade com formulários HTML, mas DELETE seria mais RESTful se fosse uma API pura
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove o bloco do trabalhador da interface
+                const elementoTrabalhador = document.getElementById(`trabalhador-${trabalhadorIdParaExcluir}`);
+                if (elementoTrabalhador) {
+                    elementoTrabalhador.remove();
+                    // Opcional: exibir uma mensagem de sucesso temporária
+                    // alert("Trabalhador excluído com sucesso!"); // Substituir por um toast/snackbar
+                }
+            } else {
+                // Exibir mensagem de erro
+                console.error("Erro ao excluir:", data.message);
+                // alert("Erro ao excluir trabalhador: " + data.message); // Substituir por um toast/snackbar
+            }
+        })
+        .catch(error => {
+            console.error("Erro na requisição de exclusão:", error);
+            // alert("Erro de rede ou servidor ao excluir trabalhador."); // Substituir por um toast/snackbar
+        })
+        .finally(() => {
+            trabalhadorIdParaExcluir = null; // Limpa o ID após a tentativa de exclusão
+        });
+    }
+});
+</script>
 {% endblock %}
