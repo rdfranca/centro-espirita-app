@@ -65,8 +65,10 @@
 <script>
 $(document).ready(function() {
 
-    // 1. Função auxiliar para popular os selects
-    function popularFiltro(url, selectId) {
+    let tabela; // Declarar a tabela fora do escopo do fetch para ser acessível globalmente no script
+
+    // Função auxiliar para popular os selects
+    function popularFiltro(url, selectId, valueProperty = 'nome', textProperty = 'nome') {
         fetch(url)
             .then(res => res.json())
             .then(data => {
@@ -75,22 +77,21 @@ $(document).ready(function() {
                 selectElement.append('<option value="">Todos</option>'); // Adiciona a opção "Todos"
 
                 data.forEach(item => {
-                    // Aqui, use item.nome no value, pois é o que a coluna da tabela retorna (row[12] e row[13])
-                    selectElement.append(`<option value="${item.nome}">${item.nome}</option>`);
+                    selectElement.append(`<option value="${item[valueProperty]}">${item[textProperty]}</option>`);
                 });
             })
             .catch(error => console.error(`Erro ao carregar ${selectId}:`, error));
     }
 
-    // 2. Chama as novas rotas do backend para popular os filtros
-    popularFiltro('/api/setores_para_filtro', '#filtroSetor');
-    popularFiltro('/api/funcoes_para_filtro', '#filtroFuncao');
+    // Carregar Setores inicialmente (usando ID no value, nome no texto)
+    // Agora o value será o ID do setor para poder buscar as funções por setor_id
+    popularFiltro('/api/setores_para_filtro', '#filtroSetor', 'id', 'nome');
 
-    // 3. Carrega os dados da tabela
+    // Carregar os dados da tabela
     fetch('/api/relatorios')
         .then(res => res.json())
         .then(data => {
-            const tabela = $('#tabelaRelatorio').DataTable({
+            tabela = $('#tabelaRelatorio').DataTable({ // Atribuição à variável global
                 data: data,
                 columns: [
                     { data: 'nome' },
@@ -114,36 +115,60 @@ $(document).ready(function() {
                     'pdfHtml5'
                 ]
             });
-
-            // Removida a lógica de preencher filtros a partir dos dados da tabela,
-            // pois agora eles são populados diretamente do banco de dados.
-            /*
-            const setores = new Set();
-            const funcoes = new Set();
-            data.forEach(item => {
-                setores.add(item.setor);
-                funcoes.add(item.funcao);
-            });
-            setores.forEach(s => {
-                $('#filtroSetor').append(`<option value="${s}">${s}</option>`);
-            });
-            funcoes.forEach(f => {
-                $('#filtroFuncao').append(`<option value="${f}">${f}</option>`);
-            });
-            */
-
-            // 4. Filtragem dinâmica (permanece a mesma, pois já funciona com os valores dos selects)
-            $('#filtroSetor, #filtroFuncao, #filtroTurno').on('change', function () {
-                const setor = $('#filtroSetor').val();
-                const funcao = $('#filtroFuncao').val();
-                const turno = $('#filtroTurno').val();
-
-                tabela.columns(11).search(setor);
-                tabela.columns(12).search(funcao);
-                tabela.columns(13).search(turno);
-                tabela.draw();
-            });
         });
+
+    // === LÓGICA PARA CARREGAR FUNÇÕES BASEADO NO SETOR SELECIONADO ===
+    $('#filtroSetor').on('change', function () {
+        const setorId = $(this).val(); // Pega o ID do setor selecionado
+        const filtroFuncao = $('#filtroFuncao');
+
+        if (setorId) { // Se um setor foi selecionado (não é "Todos" ou vazio)
+            // Chama a nova rota do backend com o ID do setor
+            popularFiltro(`/api/funcoes_por_setor_para_filtro/${setorId}`, '#filtroFuncao', 'nome', 'nome'); // Agora 'nome' para value e text
+        } else {
+            // Se "Todos" os setores for selecionado, limpa o filtro de função
+            filtroFuncao.empty();
+            filtroFuncao.append('<option value="">Todos</option>');
+        }
+        // Dispara a filtragem da tabela após a mudança do setor (e possivelmente função)
+        aplicarFiltrosTabela();
+    });
+
+    // === LÓGICA DE FILTRAGEM DINÂMICA DA TABELA ===
+    // Centralizada em uma função para ser chamada em múltiplos lugares
+    function aplicarFiltrosTabela() {
+        if (!tabela) return; // Garante que a tabela foi inicializada
+
+        // O valor do filtroSetor agora será o ID do setor no select.
+        // Mas a coluna da tabela ainda tem o NOME do setor.
+        // Precisamos traduzir o ID do setor para o nome do setor para filtrar a coluna 11.
+        // Ou, alterar a rota /api/relatorios para retornar o ID do setor na coluna 11 também.
+        // Por simplicidade, vamos pegar o TEXTO do select para filtrar.
+        const setorNome = $('#filtroSetor option:selected').text();
+        const funcaoNome = $('#filtroFuncao option:selected').text(); // Pega o texto, não o value (que pode ser ID)
+        const turno = $('#filtroTurno').val();
+
+
+        // A busca do DataTables funciona melhor com o TEXTO visível ou o valor exato da coluna.
+        // Se a coluna 'setor' da tabela tem o NOME do setor, devemos filtrar pelo NOME.
+        // Ajuste aqui para pegar o texto selecionado, se o value for o ID do banco.
+        const setorParaFiltrar = (setorNome === "Todos" || setorNome === "Selecione o setor") ? "" : setorNome;
+        const funcaoParaFiltrar = (funcaoNome === "Todos" || funcaoNome === "Selecione o setor primeiro" || funcaoNome === "Selecione a função") ? "" : funcaoNome;
+
+
+        tabela.columns(11).search(setorParaFiltrar);
+        tabela.columns(12).search(funcaoParaFiltrar);
+        tabela.columns(13).search(turno); // Turno já está correto
+        tabela.draw();
+    }
+
+    // Event listeners para os filtros
+    $('#filtroFuncao, #filtroTurno').on('change', aplicarFiltrosTabela);
+
+    // No carregamento inicial, aplicamos os filtros para garantir que a tabela seja carregada corretamente
+    // e os filtros iniciais (Todos) sejam respeitados.
+    aplicarFiltrosTabela(); // Chama no início, após a tabela ser carregada.
+
 });
 </script>
 {% endblock %}

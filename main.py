@@ -115,18 +115,19 @@ def cadastrar():
     conn.close()
     return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
 
-@app.route("/funcoes/<int:setor_id>")
-def funcoes_por_setor(setor_id):
+# Rota original /funcoes/<int:setor_id> renomeada e adaptada para uso mais genérico de API
+@app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
+def api_funcoes_por_setor(setor_id):
     """
-    Retorna as funções associadas a um setor específico em formato JSON.
-    Usado para preenchimento dinâmico de selects no frontend.
+    Retorna as funções associadas a um setor específico para uso em filtros e formulários, em formato JSON.
     """
     conn = conectar()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome", (setor_id,))
+    cursor.execute('SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome', (setor_id,))
     funcoes = cursor.fetchall()
     conn.close()
-    return jsonify(funcoes)
+    # Retorna uma lista de dicionários para facilitar o consumo no JS
+    return jsonify([{'id': f[0], 'nome': f[1]} for f in funcoes])
 
 def validar_cpf(cpf):
     """
@@ -335,7 +336,7 @@ def api_relatorios():
     conn.close()
     return jsonify(lista)
 
-# NOVAS ROTAS PARA OS FILTROS DE SETOR E FUNÇÃO
+# NOVAS ROTAS PARA OS FILTROS DE SETOR E FUNÇÃO (incluindo a renomeada)
 @app.route('/api/setores_para_filtro', methods=['GET'])
 def api_setores_para_filtro():
     """
@@ -349,18 +350,20 @@ def api_setores_para_filtro():
     # Retorna uma lista de dicionários para facilitar o consumo no JS
     return jsonify([{'id': s[0], 'nome': s[1]} for s in setores])
 
-@app.route('/api/funcoes_para_filtro', methods=['GET'])
-def api_funcoes_para_filtro():
-    """
-    Retorna todas as funções disponíveis para uso em filtros, em formato JSON.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, nome FROM funcao ORDER BY nome')
-    funcoes = cursor.fetchall()
-    conn.close()
-    # Retorna uma lista de dicionários para facilitar o consumo no JS
-    return jsonify([{'id': f[0], 'nome': f[1]} for f in funcoes])
+# Esta é a rota que foi renomeada e será usada para o filtro de função dependente
+# Ela já existia como /funcoes/<int:setor_id>
+# @app.route('/api/funcoes_para_filtro', methods=['GET']) # Rota original para todas as funções (não mais usada para filtro dependente)
+# def api_funcoes_para_filtro():
+#     """
+#     Retorna todas as funções disponíveis para uso em filtros, em formato JSON.
+#     Esta rota não será mais usada para o filtro dependente de função.
+#     """
+#     conn = conectar()
+#     cursor = conn.cursor()
+#     cursor.execute('SELECT id, nome FROM funcao ORDER BY nome')
+#     funcoes = cursor.fetchall()
+#     conn.close()
+#     return jsonify([{'id': f[0], 'nome': f[1]} for f in funcoes])
 
 if __name__ == '__main__':
     # Apenas para desenvolvimento local. Em produção, use um WSGI server.
