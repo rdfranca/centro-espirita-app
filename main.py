@@ -253,6 +253,10 @@ def atualizar(trabalhador_id):
     conn.close()
     return redirect("/")
 
+@app.route('/relatorios')
+def relatorios():
+    return render_template("relatorios.html")
+
 @app.route('/api/relatorios')
 def api_relatorios():
     conn = get_db_connection()
