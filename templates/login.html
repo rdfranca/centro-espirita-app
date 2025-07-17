@@ -1,11 +1,20 @@
-{% extends "base_login.html" %} {# ALTERADO DE "base.html" para "base_login.html" #}
+{% extends "base_login.html" %}
 {% block content %}
 <div class="d-flex justify-content-center align-items-center vh-100">
     <div class="card shadow p-4" style="width: 100%; max-width: 400px;">
         <h3 class="text-center mb-4">Login</h3>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} flash-message" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         <form method="post" action="/login">
             <div class="mb-4">
-                <label for="username" class="form-label">Usuário</label>
+                <label for="username" class="form-label">Usuário (Email)</label> {# Alterado para Email #}
                 <input type="text" class="form-control" id="username" name="username" required>
             </div>
             <div class="mb-4">

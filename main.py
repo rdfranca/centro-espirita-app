@@ -1,9 +1,19 @@
-from flask import Flask, render_template, request, redirect, jsonify, url_for
+from flask import Flask, render_template, request, redirect, jsonify, url_for, session, flash
 import psycopg2
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps # Importar para o decorador
 
 app = Flask(__name__)
+
+# --- CONFIGURAÇÃO DE SESSÃO ---
+# É ESSENCIAL para a segurança da sessão. Use uma string longa e aleatória.
+# Em produção, obtenha isso de uma variável de ambiente.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_segura_e_aleatoria_aqui_12345")
+# Você pode gerar uma com: os.urandom(24)
+# Ex: app.secret_key = os.urandom(24)
+# --- FIM CONFIGURAÇÃO DE SESSÃO ---
+
 
 def conectar():
     """
@@ -18,6 +28,17 @@ def conectar():
         port=os.environ.get("DB_PORT", 5432)
     )
 
+# --- DECORADOR PARA PROTEGER ROTAS ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'trabalhador_id' not in session:
+            flash("Você precisa fazer login para acessar esta página.", "warning")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+# --- FIM DECORADOR ---
+
 @app.route("/")
 def index():
     """Redireciona para a página de login."""
@@ -27,10 +48,10 @@ def index():
 def login():
     """
     Lida com a autenticação do usuário.
-    Agora verifica email e senha_hash no banco de dados.
+    Agora verifica email e senha_hash no banco de dados e armazena o ID na sessão.
     """
     if request.method == 'POST':
-        email = request.form.get('username') # Mantido 'username' para compatibilidade com o HTML atual do login
+        email = request.form.get('username')
         password = request.form.get('password')
 
         conn = conectar()
@@ -41,18 +62,29 @@ def login():
 
         if trabalhador_data and trabalhador_data[1] and check_password_hash(trabalhador_data[1], password):
             # Autenticação bem-sucedida
-            # Você pode armazenar o ID do trabalhador em uma sessão aqui, se necessário
+            session['trabalhador_id'] = trabalhador_data[0] # Armazena o ID do trabalhador na sessão
+            flash("Login realizado com sucesso!", "success")
             return redirect(url_for('painel'))
         else:
-            return "Usuário (Email) ou senha inválidos", 401
+            flash("Usuário (Email) ou senha inválidos.", "danger")
+            return render_template('login.html') # Renderiza o login novamente com a mensagem de erro
     return render_template('login.html')
 
+@app.route('/logout')
+def logout():
+    """Remove o usuário da sessão."""
+    session.pop('trabalhador_id', None)
+    flash("Você foi desconectado.", "info")
+    return redirect(url_for('login'))
+
 @app.route('/painel')
+@login_required # Protege esta rota
 def painel():
     """Renderiza a página do painel principal."""
     return render_template('index.html')
 
 @app.route("/buscar", methods=["GET"])
+@login_required # Protege esta rota
 def buscar():
     """
     Busca trabalhadores por nome ou CPF e retorna os resultados.
@@ -111,6 +143,7 @@ def buscar():
     return render_template("resultado.html", resultados=resultados)
 
 @app.route("/cadastrar")
+@login_required # Protege esta rota
 def cadastrar():
     """
     Renderiza a página de cadastro de trabalhadores.
@@ -126,6 +159,7 @@ def cadastrar():
     return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
 
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
+@login_required # Protege esta rota
 def api_funcoes_por_setor(setor_id):
     """
     Retorna as funções associadas a um setor específico para uso em filtros e formulários, em formato JSON.
@@ -159,6 +193,7 @@ def validar_cpf(cpf):
     return cpf[-2:] == digito1 + digito2
 
 @app.route("/inserir", methods=["POST"])
+@login_required # Protege esta rota
 def inserir():
     """
     Insere um novo trabalhador, seu endereço, email, senha e seus vínculos de setor/função/turno no banco de dados.
@@ -170,7 +205,8 @@ def inserir():
     cpf = request.form.get("cpf")
     if not validar_cpf(cpf):
         conn.close()
-        return "CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", 400
+        flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
+        return redirect(url_for('cadastrar')) # Redireciona de volta para o cadastro com erro
 
     data_nascimento = request.form.get("nascimento")
     celular = request.form.get("celular")
@@ -191,30 +227,38 @@ def inserir():
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
 
-    cursor.execute("""
-        INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao, email, senha_hash)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
-    """, (nome, cpf, data_nascimento, celular, profissao, email, hashed_password))
-    trabalhador_id = cursor.fetchone()[0]
-
-    cursor.execute("""
-        INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
-
-    for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+    try:
         cursor.execute("""
-            INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
-            VALUES (%s, %s, %s, %s)
-        """, (trabalhador_id, setor_id, funcao_id, turno))
+            INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao, email, senha_hash)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (nome, cpf, data_nascimento, celular, profissao, email, hashed_password))
+        trabalhador_id = cursor.fetchone()[0]
 
-    conn.commit()
-    conn.close()
+        cursor.execute("""
+            INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
 
-    return redirect("/")
+        for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+            cursor.execute("""
+                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
+                VALUES (%s, %s, %s, %s)
+            """, (trabalhador_id, setor_id, funcao_id, turno))
+
+        conn.commit()
+        flash("Trabalhador cadastrado com sucesso!", "success")
+        return redirect(url_for('painel')) # Redireciona para o painel após o cadastro
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao cadastrar trabalhador: {str(e)}", "danger")
+        return redirect(url_for('cadastrar')) # Redireciona de volta para o cadastro com erro
+    finally:
+        conn.close()
+
 
 @app.route('/editar/<int:trabalhador_id>')
+@login_required # Protege esta rota
 def editar(trabalhador_id):
     """
     Renderiza a página de edição de um trabalhador específico.
@@ -223,7 +267,6 @@ def editar(trabalhador_id):
     conn = conectar()
     cursor = conn.cursor()
 
-    # Adicionado email e senha_hash na seleção
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
                e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, t.email, t.senha_hash
@@ -246,9 +289,11 @@ def editar(trabalhador_id):
     """, (trabalhador_id,))
     vinculos = cursor.fetchall()
 
+    conn.close()
     return render_template("editar.html", trabalhador=trabalhador, setores=setores, funcoes=funcoes, vinculos=vinculos)
 
 @app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
+@login_required # Protege esta rota
 def atualizar(trabalhador_id):
     """
     Atualiza os dados de um trabalhador existente, seu endereço e seus vínculos.
@@ -262,55 +307,65 @@ def atualizar(trabalhador_id):
     profissao = request.form.get("profissao")
     nascimento = request.form.get("nascimento")
 
-    email = request.form.get("email") # NOVO: Captura o email
-    password = request.form.get("password") # NOVO: Captura a senha
+    email = request.form.get("email")
+    password = request.form.get("password")
 
-    # Apenas atualiza o hash da senha se uma nova senha for fornecida
-    if password:
-        hashed_password = generate_password_hash(password)
+    setores = request.form.getlist("setores[]")
+    funcoes = request.form.getlist("funcoes[]")
+    turnos = request.form.getlist("turnos[]")
+
+    try:
+        # Apenas atualiza o hash da senha se uma nova senha for fornecida
+        if password:
+            hashed_password = generate_password_hash(password)
+            cursor.execute("""
+                UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
+                email=%s, senha_hash=%s
+                WHERE id=%s
+            """, (nome, cpf, celular, profissao, nascimento, email, hashed_password, trabalhador_id))
+        else:
+            cursor.execute("""
+                UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
+                email=%s
+                WHERE id=%s
+            """, (nome, cpf, celular, profissao, nascimento, email, trabalhador_id))
+
+
+        cep = request.form.get("cep")
+        rua = request.form.get("rua")
+        numero = request.form.get("numero")
+        bairro = request.form.get("bairro")
+        cidade = request.form.get("cidade")
+        estado = request.form.get("estado")
+
+        # Atualizar endereço
         cursor.execute("""
-            UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
-            email=%s, senha_hash=%s
-            WHERE id=%s
-        """, (nome, cpf, celular, profissao, nascimento, email, hashed_password, trabalhador_id))
-    else:
-        cursor.execute("""
-            UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
-            email=%s
-            WHERE id=%s
-        """, (nome, cpf, celular, profissao, nascimento, email, trabalhador_id))
+            UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s
+            WHERE trabalhador_id=%s
+        """, (cep, rua, numero, bairro, cidade, estado, trabalhador_id))
 
+        # Apagar vínculos antigos
+        cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
 
-    cep = request.form.get("cep")
-    rua = request.form.get("rua")
-    numero = request.form.get("numero")
-    bairro = request.form.get("bairro")
-    cidade = request.form.get("cidade")
-    estado = request.form.get("estado")
+        # Inserir novos vínculos
+        for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+            cursor.execute("""
+                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
+                VALUES (%s, %s, %s, %s)
+            """, (trabalhador_id, setor_id, funcao_id, turno))
 
+        conn.commit()
+        flash("Dados do trabalhador atualizados com sucesso!", "success")
+        return redirect(url_for('painel'))
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao atualizar trabalhador: {str(e)}", "danger")
+        return redirect(url_for('editar', trabalhador_id=trabalhador_id)) # Redireciona de volta para a edição com erro
+    finally:
+        conn.close()
 
-    # Atualizar endereço
-    cursor.execute("""
-        UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s
-        WHERE trabalhador_id=%s
-    """, (cep, rua, numero, bairro, cidade, estado, trabalhador_id))
-
-    # Apagar vínculos antigos
-    cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
-
-    # Inserir novos vínculos
-    for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
-        cursor.execute("""
-            INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
-            VALUES (%s, %s, %s, %s)
-        """, (trabalhador_id, setor_id, funcao_id, turno))
-
-    conn.commit()
-    conn.close()
-    return redirect("/")
-
-# NOVA ROTA PARA EXCLUIR TRABALHADOR
 @app.route('/deletar/<int:trabalhador_id>', methods=['POST'])
+@login_required # Protege esta rota
 def deletar_trabalhador(trabalhador_id):
     """
     Exclui um trabalhador e todos os seus dados relacionados (endereço e vínculos) do banco de dados.
@@ -318,27 +373,28 @@ def deletar_trabalhador(trabalhador_id):
     conn = conectar()
     cursor = conn.cursor()
     try:
-        # Excluir vínculos primeiro (se houver foreign keys)
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id = %s", (trabalhador_id,))
-        # Excluir endereço
         cursor.execute("DELETE FROM endereco WHERE trabalhador_id = %s", (trabalhador_id,))
-        # Excluir trabalhador
         cursor.execute("DELETE FROM trabalhador WHERE id = %s", (trabalhador_id,))
         conn.commit()
+        flash("Trabalhador excluído com sucesso!", "success")
         return jsonify({"success": True, "message": "Trabalhador excluído com sucesso!"}), 200
     except Exception as e:
-        conn.rollback() # Em caso de erro, desfaz as operações
+        conn.rollback()
         print(f"Erro ao excluir trabalhador: {e}")
+        flash(f"Erro ao excluir trabalhador: {str(e)}", "danger")
         return jsonify({"success": False, "message": f"Erro ao excluir trabalhador: {str(e)}"}), 500
     finally:
         conn.close()
 
 @app.route('/relatorios')
+@login_required # Protege esta rota
 def relatorios():
     """Renderiza a página de relatórios."""
     return render_template("relatorios.html")
 
 @app.route('/api/relatorios')
+@login_required # Protege esta rota
 def api_relatorios():
     """
     Retorna todos os dados de trabalhadores, endereços e seus vínculos em formato JSON.
@@ -351,7 +407,7 @@ def api_relatorios():
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
             e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
             s.nome AS setor, f.nome AS funcao, tsf.turno,
-            t.email -- Adicionado email
+            t.email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
@@ -380,13 +436,14 @@ def api_relatorios():
             "setor": row[12],
             "funcao": row[13],
             "turno": row[14],
-            "email": row[15] # Adicionado email
+            "email": row[15]
         })
 
     conn.close()
     return jsonify(lista)
 
 @app.route('/api/setores_para_filtro', methods=['GET'])
+@login_required # Protege esta rota
 def api_setores_para_filtro():
     """
     Retorna todos os setores disponíveis para uso em filtros, em formato JSON.
