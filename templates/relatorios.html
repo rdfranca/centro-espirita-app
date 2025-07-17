@@ -4,23 +4,27 @@
     <h1 class="text-center mb-4">Relatório de Trabalhadores</h1>
 
     <!-- Filtros -->
-    <div class="row mb-4 g-3" style="display: flex; flex-wrap: wrap;">
+  <div class="row mb-4">
     <div class="col-md-4">
-        <label for="filtroSetor">Setor:</label>
-        <select id="filtroSetor" class="form-select"></select>
+        <div class="mb-3"> <label for="filtroSetor" class="form-label">Setor:</label> <select id="filtroSetor" class="form-select"></select>
+        </div>
     </div>
     <div class="col-md-4">
-        <label for="filtroFuncao">Função:</label>
-        <select id="filtroFuncao" class="form-select"></select>
+        <div class="mb-3">
+            <label for="filtroFuncao" class="form-label">Função:</label>
+            <select id="filtroFuncao" class="form-select"></select>
+        </div>
     </div>
     <div class="col-md-4">
-        <label for="filtroTurno">Turno:</label>
-        <select id="filtroTurno" class="form-select">
-            <option value="">Todos</option>
-            <option value="Manhã">Manhã</option>
-            <option value="Tarde">Tarde</option>
-            <option value="Noite">Noite</option>
-        </select>
+        <div class="mb-3">
+            <label for="filtroTurno" class="form-label">Turno:</label>
+            <select id="filtroTurno" class="form-select">
+                <option value="">Todos</option>
+                <option value="Manhã">Manhã</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noite">Noite</option>
+            </select>
+        </div>
     </div>
 </div>
    
