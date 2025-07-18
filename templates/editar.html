@@ -22,6 +22,27 @@
             <input type="text" name="profissao" class="form-control" value="{{ trabalhador[4] }}">
         </div>
         <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" name="email" id="email" placeholder="Email" required class="form-control" value="{{ trabalhador[12] if trabalhador[12] else '' }}">
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Senha (deixe em branco para não alterar)</label>
+            <div class="input-group">
+                <input type="password" name="password" id="password" placeholder="Nova Senha" class="form-control">
+                <button class="btn btn-outline-secondary" type="button" id="togglePassword">👁️</button>
+                <button class="btn btn-outline-secondary" type="button" id="generatePassword">Gerar Senha</button>
+            </div>
+            <small id="passwordStrength" class="text-muted">A senha deve conter letras maiúsculas e minúsculas, números e caracteres especiais.</small>
+        </div>
+        <div class="mb-3">
+            <label for="confirmPassword" class="form-label">Confirmar Senha</label>
+            <div class="input-group">
+                <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirmar Nova Senha" class="form-control">
+                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">👁️</button>
+            </div>
+            <small id="passwordMatchError" class="text-danger" style="display: none;">As senhas não coincidem.</small>
+        </div>
+        <div class="mb-3">
             <label>Data de Nascimento</label>
             <input type="date" name="nascimento" class="form-control" value="{{ trabalhador[5] }}">
         </div>
@@ -55,7 +76,7 @@
         <h4>Setores, Funções e Turnos</h4>
         <div id="vinculos">
             {% for setor_id, funcao_id, turno in vinculos %}
-            <div class="vinculo" style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+            <div class="vinculo row g-3 align-items-end mb-3">
                 <div class="col">
                     <label>Setor</label>
                     <select name="setores[]" class="form-select setor">
@@ -101,34 +122,35 @@ function aplicarEventosVinculo(vinculo) {
     const selectFuncao = vinculo.querySelector('.funcao');
     const funcaoSelecionada = selectFuncao.getAttribute('data-selected');
 
-    if (selectSetor && selectFuncao) {
-        selectSetor.addEventListener('change', () => {
-            fetch(`/funcoes/${selectSetor.value}`)
-                .then(res => res.json())
-                .then(data => {
-                    selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
-                    data.forEach(([id, nome]) => {
-                        const opt = document.createElement('option');
-                        opt.value = id;
-                        opt.textContent = nome;
-                        selectFuncao.appendChild(opt);
-                    });
+    function carregarFuncoes(setorId, funcaoParaSelecionar = null) {
+        if (!setorId) {
+            selectFuncao.innerHTML = '<option disabled selected>Selecione o setor primeiro</option>';
+            return;
+        }
+        fetch(`/api/funcoes_por_setor/${setorId}`)
+            .then(res => res.json())
+            .then(data => {
+                selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
+                data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = item.nome;
+                    if (funcaoParaSelecionar && item.id == funcaoParaSelecionar) {
+                        opt.selected = true;
+                    }
+                    selectFuncao.appendChild(opt);
                 });
+            })
+            .catch(err => console.error("Erro ao buscar funções:", err));
+    }
+
+    if (selectSetor && selectFuncao) {
+        selectSetor.addEventListener('change', function () {
+            carregarFuncoes(this.value);
         });
 
-        if (selectSetor.value && funcaoSelecionada) {
-            fetch(`/funcoes/${selectSetor.value}`)
-                .then(res => res.json())
-                .then(data => {
-                    selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
-                    data.forEach(([id, nome]) => {
-                        const opt = document.createElement('option');
-                        opt.value = id;
-                        opt.textContent = nome;
-                        if (funcaoSelecionada == id) opt.selected = true;
-                        selectFuncao.appendChild(opt);
-                    });
-                });
+        if (selectSetor.value) {
+            carregarFuncoes(selectSetor.value, funcaoSelecionada);
         }
     }
 
@@ -141,7 +163,7 @@ function aplicarEventosVinculo(vinculo) {
 function adicionarVinculo() {
     const container = document.getElementById("vinculos");
     const div = document.createElement('div');
-    div.className = 'row align-items-end mb-3 vinculo';
+    div.className = 'row g-3 align-items-end mb-3 vinculo';
     div.innerHTML = `
         <div class="col">
             <label>Setor</label>
@@ -228,7 +250,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const cidadeInput = document.querySelector('input[name="cidade"]');
                 const estadoInput = document.querySelector('input[name="estado"]');
 
-                // Mostra mensagem temporária de carregamento
                 ruaInput.value = 'Carregando...';
                 bairroInput.value = 'Carregando...';
                 cidadeInput.value = 'Carregando...';
@@ -239,28 +260,4 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(data => {
                         if (!data.erro) {
                             ruaInput.value = data.logradouro || '';
-                            bairroInput.value = data.bairro || '';
-                            cidadeInput.value = data.localidade || '';
-                            estadoInput.value = data.uf || '';
-                        } else {
-                            ruaInput.value = '';
-                            bairroInput.value = '';
-                            cidadeInput.value = '';
-                            estadoInput.value = '';
-                            alert("CEP não encontrado.");
-                        }
-                    })
-                    .catch(error => {
-                        ruaInput.value = '';
-                        bairroInput.value = '';
-                        cidadeInput.value = '';
-                        estadoInput.value = '';
-                        console.error("Erro ao buscar o CEP:", error);
-                        alert("Erro ao buscar o CEP.");
-                    });
-            }
-        });
-    }
-});
-</script>
-{% endblock %}
+                            bairro
