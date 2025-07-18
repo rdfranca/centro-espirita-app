@@ -260,4 +260,105 @@ document.addEventListener('DOMContentLoaded', () => {
                     .then(data => {
                         if (!data.erro) {
                             ruaInput.value = data.logradouro || '';
-                            bairro
+                            bairroInput.value = data.bairro || '';
+                            cidadeInput.value = data.localidade || '';
+                            estadoInput.value = data.uf || '';
+                        } else {
+                            ruaInput.value = '';
+                            bairroInput.value = '';
+                            cidadeInput.value = '';
+                            estadoInput.value = '';
+                            alert("CEP não encontrado.");
+                        }
+                    })
+                    .catch(error => {
+                        ruaInput.value = '';
+                        bairroInput.value = '';
+                        cidadeInput.value = '';
+                        estadoInput.value = '';
+                        console.error("Erro ao buscar o CEP:", error);
+                        alert("Erro ao buscar o CEP.");
+                    });
+            }
+        });
+    }
+
+    // --- Início: Código para campos de senha em editar.html ---
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const togglePasswordButton = document.getElementById('togglePassword');
+    const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
+    const generatePasswordButton = document.getElementById('generatePassword');
+    const passwordMatchError = document.getElementById('passwordMatchError');
+    const form = document.querySelector("form");
+
+    function togglePasswordVisibility(input, button) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            button.innerHTML = '🙈';
+        } else {
+            input.type = 'password';
+            button.innerHTML = '👁️';
+        }
+    }
+
+    if (togglePasswordButton && passwordInput) {
+        togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
+    }
+    if (toggleConfirmPasswordButton && confirmPasswordInput) {
+        toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
+    }
+
+    if (generatePasswordButton && passwordInput && confirmPasswordInput) {
+        generatePasswordButton.addEventListener('click', function () {
+            const newPassword = generateStrongPassword(12);
+            passwordInput.value = newPassword;
+            confirmPasswordInput.value = newPassword;
+            passwordInput.type = 'text';
+            confirmPasswordInput.type = 'text';
+            if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
+            if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
+            if (passwordMatchError) passwordMatchError.style.display = 'none';
+        });
+    }
+
+    if (passwordInput && confirmPasswordInput && passwordMatchError) {
+        confirmPasswordInput.addEventListener('blur', function () {
+            if (passwordInput.value.length > 0 && passwordInput.value !== this.value) {
+                passwordMatchError.style.display = 'block';
+                confirmPasswordInput.classList.add('is-invalid');
+            } else {
+                passwordMatchError.style.display = 'none';
+                confirmPasswordInput.classList.remove('is-invalid');
+            }
+        });
+        passwordInput.addEventListener('blur', function() {
+            if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
+                passwordMatchError.style.display = 'block';
+                confirmPasswordInput.classList.add('is-invalid');
+            } else {
+                passwordMatchError.style.display = 'none';
+                confirmPasswordInput.classList.remove('is-invalid');
+            }
+        });
+
+        // Adiciona validação no submit do formulário para campos de senha
+        form.addEventListener('submit', function(e) {
+            // Apenas valida se alguma senha foi digitada
+            if (passwordInput.value || confirmPasswordInput.value) {
+                if (passwordInput.value !== confirmPasswordInput.value) {
+                    e.preventDefault();
+                    passwordMatchError.style.display = 'block';
+                    confirmPasswordInput.classList.add('is-invalid');
+                    confirmPasswordInput.focus();
+                } else {
+                    passwordMatchError.style.display = 'none';
+                    confirmPasswordInput.classList.remove('is-invalid');
+                }
+            }
+        });
+    }
+    // --- Fim: Código para campos de senha em editar.html ---
+});
+</script>
+{% endblock %}
