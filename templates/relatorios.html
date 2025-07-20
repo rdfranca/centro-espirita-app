@@ -5,19 +5,19 @@
 
     <!-- Filtros -->
     <div class="row mb-4 gx-4">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="mb-3">
                 <label for="filtroSetor" class="form-label">Setor:</label>
                 <select id="filtroSetor" class="form-select"></select>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="mb-3">
                 <label for="filtroFuncao" class="form-label">Função:</label>
                 <select id="filtroFuncao" class="form-select"></select>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <div class="mb-3">
                 <label for="filtroTurno" class="form-label">Turno:</label>
                 <select id="filtroTurno" class="form-select">
@@ -25,6 +25,22 @@
                     <option value="Manhã">Manhã</option>
                     <option value="Tarde">Tarde</option>
                     <option value="Noite">Noite</option>
+                    <option value="Não se aplica">Não se aplica</option> {# Nova opção #}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="filtroDiasDaSemana" class="form-label">Dias da Semana:</label>
+                <select id="filtroDiasDaSemana" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="Segunda-feira">Segunda-feira</option>
+                    <option value="Terça-feira">Terça-feira</option>
+                    <option value="Quarta-feira">Quarta-feira</option>
+                    <option value="Quinta-feira">Quinta-feira</option>
+                    <option value="Sexta-feira">Sexta-feira</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
                 </select>
             </div>
         </div>
@@ -48,6 +64,7 @@
                 <th>Setor</th>
                 <th>Função</th>
                 <th>Turno</th>
+                <th>Dias da Semana</th> {# Novo cabeçalho de coluna #}
             </tr>
         </thead>
         <tbody></tbody>
@@ -123,7 +140,8 @@ $(document).ready(function() {
                     { data: 'estado' },
                     { data: 'setor' },   // Coluna 11 - Contém o NOME do setor
                     { data: 'funcao' },  // Coluna 12 - Contém o NOME da função
-                    { data: 'turno' }    // Coluna 13
+                    { data: 'turno' },   // Coluna 13
+                    { data: 'dias_da_semana' } // Nova coluna 14
                 ],
                 dom: 'Bfrtip',
                 buttons: [
@@ -168,22 +186,27 @@ $(document).ready(function() {
         const setorParaFiltrar = $('#filtroSetor option:selected').text();
         const funcaoParaFiltrar = $('#filtroFuncao option:selected').text();
         const turno = $('#filtroTurno').val();
+        const diasDaSemana = $('#filtroDiasDaSemana').val(); // Novo filtro
 
         // Se o texto é "Todos" (ou o texto inicial "Selecione o setor/função"),
         // significa que o filtro deve ser vazio para mostrar tudo.
         const finalSetor = (setorParaFiltrar === "Todos" || setorParaFiltrar === "Selecione o setor") ? "" : setorParaFiltrar;
         const finalFuncao = (funcaoParaFiltrar === "Todos" || funcaoParaFiltrar === "Selecione o setor primeiro" || funcaoParaFiltrar === "Selecione a função") ? "" : funcaoParaFiltrar;
 
-        // console.log(`Filtrando por Setor: '${finalSetor}', Função: '${finalFuncao}', Turno: '${turno}'`); // Para depuração
+        // console.log(`Filtrando por Setor: '${finalSetor}', Função: '${finalFuncao}', Turno: '${turno}', Dias da Semana: '${diasDaSemana}'`); // Para depuração
 
         tabela.columns(11).search(finalSetor);
         tabela.columns(12).search(finalFuncao);
         tabela.columns(13).search(turno);
+        // Para 'dias_da_semana', o filtro deve ser um pouco diferente se a coluna contiver uma string separada por vírgulas.
+        // Usamos uma função de filtro personalizada para verificar se o dia selecionado está contido na string da coluna.
+        tabela.columns(14).search(diasDaSemana ? diasDaSemana : '', true, false); // O true e false são para regex e smart search
+
         tabela.draw();
     }
 
-    // Event listeners para os filtros de Função e Turno (o de Setor já tem o seu)
-    $('#filtroFuncao, #filtroTurno').on('change', aplicarFiltrosTabela);
+    // Event listeners para os filtros de Função, Turno e Dias da Semana
+    $('#filtroFuncao, #filtroTurno, #filtroDiasDaSemana').on('change', aplicarFiltrosTabela);
 
 });
 </script>
