@@ -93,27 +93,30 @@
                     </select>
                 </div>
                 <div class="col">
-                <label for="dias_da_semana[]" class="form-label">Dias da Semana:</label>
-                <select name="dias_da_semana[]" class="form-select" multiple>
-                    <option value="Segunda-feira">Segunda-feira</option>
-                    <option value="Terça-feira">Terça-feira</option>
-                    <option value="Quarta-feira">Quarta-feira</option>
-                    <option value="Quinta-feira">Quinta-feira</option>
-                    <option value="Sexta-feira">Sexta-feira</option>
-                    <option value="Sábado">Sábado</option>
-                    <option value="Domingo">Domingo</option>
-                </select>
-            </div>
-            <div class="col">
-                <label for="turnos[]" class="form-label">Turno:</label>
-                <select name="turnos[]" class="form-select">
-                    <option disabled selected>Selecione o turno</option>
-                    <option value="Manhã">Manhã</option>
-                    <option value="Tarde">Tarde</option>
-                    <option value="Noite">Noite</option>
-                    <option value="Não se aplica">Não se aplica</option> {# Added option #}
-                </select>
-            </div>
+                    <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+                    {# O select real, mas com um nome diferente para não ser pego diretamente pelo Flask #}
+                    <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
+                    {# Campo oculto que o Flask realmente lerá, com os valores combinados #}
+                    <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+                </div>
+                <div class="col">
+                    <label for="turnos[]" class="form-label">Turno:</label>
+                    <select name="turnos[]" class="form-select">
+                        <option disabled selected>Selecione o turno</option>
+                        <option value="Manhã">Manhã</option>
+                        <option value="Tarde">Tarde</option>
+                        <option value="Noite">Noite</option>
+                        <option value="Não se aplica">Não se aplica</option> {# Added option #}
+                    </select>
+                </div>
             </div>
         </div>
         <button type="button" class="btn btn-secondary mt-2" onclick="adicionarVinculo()">➕ Adicionar outro Setor</button>
@@ -125,9 +128,19 @@
 </div>
 
 <script>
+function atualizarDiasDaSemanaHidden(vinculoDiv) {
+    const selectDias = vinculoDiv.querySelector('.dias-da-semana-select');
+    const hiddenInput = vinculoDiv.querySelector('.dias-da-semana-hidden-input');
+    if (selectDias && hiddenInput) {
+        const selectedOptions = Array.from(selectDias.selectedOptions).map(option => option.value);
+        hiddenInput.value = selectedOptions.join(',');
+    }
+}
+
 function aplicarEventosVinculo(vinculo) {
     const selectSetor = vinculo.querySelector('select[name="setores[]"]');
     const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
+    const selectDiasDaSemana = vinculo.querySelector('.dias-da-semana-select'); // Seleciona o select de dias
 
     if (selectSetor && selectFuncao) {
         selectSetor.addEventListener('change', function () {
@@ -147,6 +160,14 @@ function aplicarEventosVinculo(vinculo) {
                 .catch(err => console.error("Erro ao buscar funções:", err));
         });
     }
+
+    // Adiciona listener para o select de dias da semana
+    if (selectDiasDaSemana) {
+        selectDiasDaSemana.addEventListener('change', () => atualizarDiasDaSemanaHidden(vinculo));
+        // Chama a função uma vez para preencher o campo oculto no carregamento da página (se houver valores pré-selecionados)
+        atualizarDiasDaSemanaHidden(vinculo);
+    }
+
 
     const btnRemover = vinculo.querySelector('.remover-vinculo');
     if (btnRemover) {
@@ -386,11 +407,25 @@ function adicionarVinculo() {
             </select>
         </div>
         <div class="col">
+            <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+            <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                <option value="Segunda-feira">Segunda-feira</option>
+                <option value="Terça-feira">Terça-feira</option>
+                <option value="Quarta-feira">Quarta-feira</option>
+                <option value="Quinta-feira">Quinta-feira</option>
+                <option value="Sexta-feira">Sexta-feira</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+            </select>
+            <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+        </div>
+        <div class="col">
             <label for="turnos[]" class="form-label">Turno:</label>
             <select name="turnos[]" class="form-select">
                 <option value="Manhã">Manhã</option>
                 <option value="Tarde">Tarde</option>
                 <option value="Noite">Noite</option>
+                <option value="Não se aplica">Não se aplica</option> {# Added option #}
             </select>
         </div>
         <div class="col-auto">
