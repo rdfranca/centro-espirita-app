@@ -105,7 +105,7 @@ def buscar():
     resultados = []
     for t in trabalhadores:
         cursor.execute("""
-            SELECT DISTINCT s.nome, f.nome, tsf.turno
+            SELECT DISTINCT s.nome, f.nome, tsf.turno, tsf.dias_da_semana {# Adicionado tsf.dias_da_semana #}
             FROM trabalhador_setor_funcao tsf
             LEFT JOIN setores s ON tsf.setor_id = s.id
             LEFT JOIN funcao f ON tsf.funcao_id = f.id
@@ -115,12 +115,13 @@ def buscar():
 
         vinculos_formatados = []
         for v in vinculos:
-            setor, funcao, turno = v
+            setor, funcao, turno, dias_da_sesemana = v {# Desempacota o novo campo #}
             if setor and funcao and turno:
                 vinculos_formatados.append({
                     "setor": setor,
                     "funcao": funcao,
-                    "turno": turno
+                    "turno": turno,
+                    "dias_da_semana": dias_da_semana {# Adicionado o novo campo #}
                 })
 
         resultados.append({
@@ -226,6 +227,13 @@ def inserir():
     setores = request.form.getlist("setores[]")
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
+    # ATENÇÃO: Se o campo 'dias_da_semana[]' for um 'select multiple' e houver múltiplos blocos de vínculo,
+    # request.form.getlist("dias_da_semana[]") retornará uma lista PLANA de TODAS as opções selecionadas de TODOS os selects.
+    # Para que o 'zip' funcione corretamente, o frontend (JavaScript) DEVE garantir que 'dias_da_semana[]'
+    # seja uma lista de strings, onde cada string representa os dias (separados por vírgula) para UM VÍNCULO.
+    # Ex: ["Segunda-feira,Terça-feira", "Quinta-feira"]
+    dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
+
 
     try:
         cursor.execute("""
@@ -240,11 +248,23 @@ def inserir():
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
 
-        for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+        # Itera sobre os vínculos e insere no banco de dados
+        # O zip funcionará corretamente se as listas tiverem o mesmo comprimento
+        # e os elementos estiverem alinhados (o que o Flask faz para campos com o mesmo nome[]).
+        for i in range(len(setores)):
+            setor_id = setores[i]
+            funcao_id = funcoes[i]
+            turno = turnos[i]
+            # Tenta obter os dias da semana para este vínculo específico.
+            # Se 'dias_da_semana_por_vinculo' for uma lista plana de todas as seleções individuais,
+            # esta lógica precisaria ser mais complexa.
+            # Assumimos que 'dias_da_semana_por_vinculo' já está alinhado com os outros campos.
+            dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
+
             cursor.execute("""
-                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
-                VALUES (%s, %s, %s, %s)
-            """, (trabalhador_id, setor_id, funcao_id, turno))
+                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
 
         conn.commit()
         flash("Trabalhador cadastrado com sucesso!", "success")
@@ -283,7 +303,7 @@ def editar(trabalhador_id):
     funcoes = cursor.fetchall()
 
     cursor.execute("""
-        SELECT tsf.setor_id, tsf.funcao_id, tsf.turno
+        SELECT tsf.setor_id, tsf.funcao_id, tsf.turno, tsf.dias_da_semana {# Adicionado tsf.dias_da_semana #}
         FROM trabalhador_setor_funcao tsf
         WHERE tsf.trabalhador_id = %s
     """, (trabalhador_id,))
@@ -313,6 +333,9 @@ def atualizar(trabalhador_id):
     setores = request.form.getlist("setores[]")
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
+    # ATENÇÃO: Mesma observação da função 'inserir()' sobre 'dias_da_semana[]'.
+    # O frontend DEVE garantir que esta lista esteja alinhada com os outros campos.
+    dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
 
     try:
         # Apenas atualiza o hash da senha se uma nova senha for fornecida
@@ -348,11 +371,17 @@ def atualizar(trabalhador_id):
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
 
         # Inserir novos vínculos
-        for setor_id, funcao_id, turno in zip(setores, funcoes, turnos):
+        for i in range(len(setores)):
+            setor_id = setores[i]
+            funcao_id = funcoes[i]
+            turno = turnos[i]
+            # Tenta obter os dias da semana para este vínculo específico.
+            dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
+
             cursor.execute("""
-                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno)
-                VALUES (%s, %s, %s, %s)
-            """, (trabalhador_id, setor_id, funcao_id, turno))
+                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
 
         conn.commit()
         flash("Dados do trabalhador atualizados com sucesso!", "success")
@@ -406,7 +435,7 @@ def api_relatorios():
         SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
             e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
-            s.nome AS setor, f.nome AS funcao, tsf.turno,
+            s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana, {# Adicionado tsf.dias_da_semana #}
             t.email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
@@ -420,6 +449,7 @@ def api_relatorios():
 
     lista = []
     for row in dados:
+        # Ajustar os índices conforme a nova query
         lista.append({
             "id": row[0],
             "nome": row[1],
@@ -436,7 +466,8 @@ def api_relatorios():
             "setor": row[12],
             "funcao": row[13],
             "turno": row[14],
-            "email": row[15]
+            "dias_da_semana": row[15], # Novo campo
+            "email": row[16] # Email agora é o 16º elemento (índice 16)
         })
 
     conn.close()
