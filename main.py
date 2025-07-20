@@ -105,7 +105,7 @@ def buscar():
     resultados = []
     for t in trabalhadores:
         cursor.execute("""
-            SELECT DISTINCT s.nome, f.nome, tsf.turno, tsf.dias_da_semana {# Adicionado tsf.dias_da_semana #}
+            SELECT DISTINCT s.nome, f.nome, tsf.turno, tsf.dias_da_semana
             FROM trabalhador_setor_funcao tsf
             LEFT JOIN setores s ON tsf.setor_id = s.id
             LEFT JOIN funcao f ON tsf.funcao_id = f.id
@@ -115,13 +115,13 @@ def buscar():
 
         vinculos_formatados = []
         for v in vinculos:
-            setor, funcao, turno, dias_da_sesemana = v {# Desempacota o novo campo #}
+            setor, funcao, turno, dias_da_semana = v # Desempacota o novo campo
             if setor and funcao and turno:
                 vinculos_formatados.append({
                     "setor": setor,
                     "funcao": funcao,
                     "turno": turno,
-                    "dias_da_semana": dias_da_semana {# Adicionado o novo campo #}
+                    "dias_da_semana": dias_da_semana # Adicionado o novo campo
                 })
 
         resultados.append({
@@ -303,7 +303,7 @@ def editar(trabalhador_id):
     funcoes = cursor.fetchall()
 
     cursor.execute("""
-        SELECT tsf.setor_id, tsf.funcao_id, tsf.turno, tsf.dias_da_semana {# Adicionado tsf.dias_da_semana #}
+        SELECT tsf.setor_id, tsf.funcao_id, tsf.turno, tsf.dias_da_semana
         FROM trabalhador_setor_funcao tsf
         WHERE tsf.trabalhador_id = %s
     """, (trabalhador_id,))
@@ -435,7 +435,7 @@ def api_relatorios():
         SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
             e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
-            s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana, {# Adicionado tsf.dias_da_semana #}
+            s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana,
             t.email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
