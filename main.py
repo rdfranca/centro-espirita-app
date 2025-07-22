@@ -95,7 +95,7 @@ def buscar():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado
+               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento # Adicionado e.complemento
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
@@ -137,6 +137,7 @@ def buscar():
             "bairro": t[9],
             "cidade": t[10],
             "estado": t[11],
+            "complemento": t[12], # Novo campo complemento
             "vinculos": vinculos_formatados
         })
 
@@ -223,6 +224,7 @@ def inserir():
     bairro = request.form.get("bairro")
     cidade = request.form.get("cidade")
     estado = request.form.get("estado")
+    complemento = request.form.get("complemento") # Novo campo
 
     setores = request.form.getlist("setores[]")
     funcoes = request.form.getlist("funcoes[]")
@@ -244,9 +246,9 @@ def inserir():
         trabalhador_id = cursor.fetchone()[0]
 
         cursor.execute("""
-            INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado))
+            INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento) # Adicionado complemento
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) # Adicionado %s para complemento
+        """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento)) # Adicionado complemento
 
         # Itera sobre os vínculos e insere no banco de dados
         # O zip funcionará corretamente se as listas tiverem o mesmo comprimento
@@ -289,7 +291,7 @@ def editar(trabalhador_id):
 
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, t.email, t.senha_hash
+               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email, t.senha_hash # Adicionado e.complemento
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         WHERE t.id = %s
@@ -360,12 +362,13 @@ def atualizar(trabalhador_id):
         bairro = request.form.get("bairro")
         cidade = request.form.get("cidade")
         estado = request.form.get("estado")
+        complemento = request.form.get("complemento") # Novo campo
 
         # Atualizar endereço
         cursor.execute("""
-            UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s
+            UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s, complemento=%s # Adicionado complemento
             WHERE trabalhador_id=%s
-        """, (cep, rua, numero, bairro, cidade, estado, trabalhador_id))
+        """, (cep, rua, numero, bairro, cidade, estado, complemento, trabalhador_id)) # Adicionado complemento
 
         # Apagar vínculos antigos
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
@@ -434,7 +437,7 @@ def api_relatorios():
     query = """
         SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-            e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado,
+            e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, # Adicionado e.complemento
             s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana,
             t.email
         FROM trabalhador t
@@ -463,11 +466,12 @@ def api_relatorios():
             "bairro": row[9],
             "cidade": row[10],
             "estado": row[11],
-            "setor": row[12],
-            "funcao": row[13],
-            "turno": row[14],
-            "dias_da_semana": row[15], # Novo campo
-            "email": row[16] # Email agora é o 16º elemento (índice 16)
+            "complemento": row[12], # Novo campo
+            "setor": row[13],
+            "funcao": row[14],
+            "turno": row[15],
+            "dias_da_semana": row[16],
+            "email": row[17] # Email agora é o 17º elemento (índice 17)
         })
 
     conn.close()

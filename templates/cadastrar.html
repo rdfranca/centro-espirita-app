@@ -62,6 +62,10 @@
             <input type="text" name="numero" id="numero" placeholder="Número" class="form-control">
         </div>
         <div class="mb-3">
+            <label for="complemento" class="form-label">Complemento</label> {# Novo campo Complemento #}
+            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control">
+        </div>
+        <div class="mb-3">
             <label for="bairro" class="form-label">Bairro</label>
             <input type="text" name="bairro" id="bairro" placeholder="Bairro" class="form-control">
         </div>
@@ -265,6 +269,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (cep.length !== 8) {
                 document.querySelector('input[name="rua"]').value = '';
+                document.querySelector('input[name="numero"]').value = ''; // Adicionado para limpar o número
+                document.querySelector('input[name="complemento"]').value = ''; // Adicionado para limpar o complemento
                 document.querySelector('input[name="bairro"]').value = '';
                 document.querySelector('input[name="cidade"]').value = '';
                 document.querySelector('input[name="estado"]').value = '';
@@ -272,20 +278,24 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             const rua = document.querySelector('input[name="rua"]');
+            const numero = document.querySelector('input[name="numero"]'); // Adicionado
+            const complemento = document.querySelector('input[name="complemento"]'); // Adicionado
             const bairro = document.querySelector('input[name="bairro"]');
             const cidade = document.querySelector('input[name="cidade"]');
             const estado = document.querySelector('input[name="estado"]');
 
             rua.value = bairro.value = cidade.value = estado.value = "Carregando...";
-            rua.disabled = bairro.disabled = cidade.disabled = estado.disabled = true;
+            // Incluir complemento e número na desativação
+            rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = true;
 
             fetch(`https://viacep.com.br/ws/${cep}/json/`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.erro) {
-                        rua.value = bairro.value = cidade.value = estado.value = "";
+                        rua.value = numero.value = complemento.value = bairro.value = cidade.value = estado.value = "";
                     } else {
                         rua.value = data.logradouro;
+                        // O ViaCEP geralmente não retorna número ou complemento, então eles permanecem vazios ou como estavam
                         bairro.value = data.bairro;
                         cidade.value = data.localidade;
                         estado.value = data.uf;
@@ -295,7 +305,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     // Tratar erro na busca do CEP
                 })
                 .finally(() => {
-                    rua.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
+                    // Incluir complemento e número na reativação
+                    rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
                 });
         });
     }
