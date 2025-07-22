@@ -63,7 +63,7 @@
         <div class="mb-3">
             <!-- DEBUG complemento bruto: {{ trabalhador[12] }} -->
             <label for="complemento" class="form-label">Complemento</label>
-            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control" value="{{ trabalhador[12] if trabalhador[12] else '' }}">
+            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control" value="{{ trabalhador[12] or '' }}">
         </div>
         <div class="mb-3">
             <label>Bairro</label>
