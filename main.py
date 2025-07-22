@@ -95,7 +95,7 @@ def buscar():
     cursor = conn.cursor()
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento # Adicionado e.complemento
+               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
@@ -137,7 +137,8 @@ def buscar():
             "bairro": t[9],
             "cidade": t[10],
             "estado": t[11],
-            "complemento": t[12], # Novo campo complemento
+            "complemento": t[12],
+            "email": t[13], # Adicionado email
             "vinculos": vinculos_formatados
         })
 
@@ -246,9 +247,9 @@ def inserir():
         trabalhador_id = cursor.fetchone()[0]
 
         cursor.execute("""
-            INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento) # Adicionado complemento
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s) # Adicionado %s para complemento
-        """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento)) # Adicionado complemento
+            INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento))
 
         # Itera sobre os vínculos e insere no banco de dados
         # O zip funcionará corretamente se as listas tiverem o mesmo comprimento
@@ -291,7 +292,7 @@ def editar(trabalhador_id):
 
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email, t.senha_hash # Adicionado e.complemento
+               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email, t.senha_hash
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         WHERE t.id = %s
@@ -366,9 +367,9 @@ def atualizar(trabalhador_id):
 
         # Atualizar endereço
         cursor.execute("""
-            UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s, complemento=%s # Adicionado complemento
+            UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s, complemento=%s
             WHERE trabalhador_id=%s
-        """, (cep, rua, numero, bairro, cidade, estado, complemento, trabalhador_id)) # Adicionado complemento
+        """, (cep, rua, numero, bairro, cidade, estado, complemento, trabalhador_id))
 
         # Apagar vínculos antigos
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
@@ -437,7 +438,7 @@ def api_relatorios():
     query = """
         SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-            e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, # Adicionado e.complemento
+            e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento,
             s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana,
             t.email
         FROM trabalhador t

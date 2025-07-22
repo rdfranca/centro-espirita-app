@@ -1,146 +1,527 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container mt-5">
-    <h1>Resultado da Busca</h1>
-    {% if resultados %}
-        {% for r in resultados %}
-        <div class="card mb-4" id="trabalhador-{{ r.id }}">
-            <div class="card-body">
-                <h5 class="card-title">{{ r.nome or 'Nome Não Informado' }}</h5>
-                <p class="card-text">
-                    <strong>CPF:</strong> {{ r.cpf or '' }}<br>
-                    <strong>Celular:</strong> {{ r.celular or '' }}<br>
-                    <strong>Profissão:</strong> {{ r.profissao or '' }}<br>
-                    <strong>Nascimento:</strong> {{ r.nascimento or '' }}<br>
-                    <strong>Endereço:</strong> {{ r.rua or '' }}{% if r.numero %}, {{ r.numero }}{% endif %} - {{ r.bairro or '' }} - {{ r.cidade or '' }}/{{ r.estado or '' }}<br>
-                </p>
+    <h1 class="text-center mb-4">Editar Trabalhador</h1>
+    <form action="/atualizar/{{ trabalhador[0] }}" method="POST">
+        <h4>Dados Pessoais</h4>
+        <div class="mb-3">
+            <label>Nome completo</label>
+            <input type="text" name="nome" class="form-control" value="{{ trabalhador[1] }}" required>
+        </div>
+        <div class="mb-3">
+            <label>CPF</label>
+            <input type="text" name="cpf" id="cpf" class="form-control" value="{{ trabalhador[2] }}" maxlength="11" required>
+            <small id="cpfErro" class="text-danger" style="display: none;">CPF inválido. Digite um CPF válido com 11 números.</small>
+        </div>
+        <div class="mb-3">
+            <label>Celular</label>
+            <input type="text" name="celular" class="form-control" value="{{ trabalhador[3] }}">
+        </div>
+        <div class="mb-3">
+            <label>Profissão</label>
+            <input type="text" name="profissao" class="form-control" value="{{ trabalhador[4] }}">
+        </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" name="email" id="email" placeholder="Email" required class="form-control" value="{{ trabalhador[13] if trabalhador[13] else '' }}"> {# Índice ajustado para email #}
+        </div>
+        <div class="mb-3">
+            <label for="password" class="form-label">Senha (deixe em branco para não alterar)</label>
+            <div class="input-group">
+                <input type="password" name="password" id="password" placeholder="Nova Senha" class="form-control">
+                <button class="btn btn-outline-secondary" type="button" id="togglePassword">👁️</button>
+                <button class="btn btn-outline-secondary" type="button" id="generatePassword">Gerar Senha</button>
+            </div>
+            <small id="passwordStrength" class="text-muted">A senha deve conter letras maiúsculas e minúsculas, números e caracteres especiais.</small>
+        </div>
+        <div class="mb-3">
+            <label for="confirmPassword" class="form-label">Confirmar Senha</label>
+            <div class="input-group">
+                <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirmar Nova Senha" class="form-control">
+                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">👁️</button>
+            </div>
+            <small id="passwordMatchError" class="text-danger" style="display: none;">As senhas não coincidem.</small>
+        </div>
+        <div class="mb-3">
+            <label>Data de Nascimento</label>
+            <input type="date" name="nascimento" class="form-control" value="{{ trabalhador[5] }}">
+        </div>
 
-                {% if r.vinculos %}
-                <h6 class="card-subtitle mb-2 text-muted">Vínculos:</h6>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <thead>
-                            <tr class="table-light">
-                                <th>Setor</th>
-                                <th>Função</th>
-                                <th>Turno</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for v in r.vinculos %}
-                            <tr>
-                                <td>{{ v.setor }}</td>
-                                <td>{{ v.funcao }}</td>
-                                <td>{{ v.turno }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+        <h4>Endereço</h4>
+        <div class="mb-3">
+            <label>CEP</label>
+            <input type="text" name="cep" id="cep" class="form-control" value="{{ trabalhador[6] }}">
+        </div>
+        <div class="mb-3">
+            <label>Rua</label>
+            <input type="text" name="rua" id="rua" class="form-control" value="{{ trabalhador[7] }}">
+        </div>
+        <div class="mb-3">
+            <label>Número</label>
+            <input type="text" name="numero" id="numero" class="form-control" value="{{ trabalhador[8] }}">
+        </div>
+        <div class="mb-3">
+            <label for="complemento" class="form-label">Complemento</label> {# Novo campo Complemento #}
+            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control" value="{{ trabalhador[12] if trabalhador[12] else '' }}"> {# Preenche com o valor existente #}
+        </div>
+        <div class="mb-3">
+            <label>Bairro</label>
+            <input type="text" name="bairro" id="bairro" class="form-control" value="{{ trabalhador[9] }}">
+        </div>
+        <div class="mb-3">
+            <label>Cidade</label>
+            <input type="text" name="cidade" id="cidade" class="form-control" value="{{ trabalhador[10] }}">
+        </div>
+        <div class="mb-3">
+            <label>Estado</label>
+            <input type="text" name="estado" id="estado" class="form-control" value="{{ trabalhador[11] }}">
+        </div>
+
+        <h4>Setores, Funções e Turnos</h4>
+        <div id="vinculos">
+            {% for setor_id, funcao_id, turno, dias_da_semana_str in vinculos %}
+            <div class="vinculo row g-3 align-items-end mb-3">
+                <div class="col">
+                    <label>Setor</label>
+                    <select name="setores[]" class="form-select setor">
+                        <option disabled selected>Selecione o setor</option>
+                        {% for id, nome in setores %}
+                            <option value="{{ id }}" {% if id == setor_id %}selected{% endif %}>{{ nome }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-                {% else %}
-                <p class="text-muted">Nenhum vínculo encontrado.</p>
-                {% endif %}
-
-                <!-- Botões de ação -->
-                <div class="mt-3 d-flex justify-content-end">
-                    <a href="{{ url_for('editar', trabalhador_id=r.id) }}" class="btn btn-warning me-2">✏️ Editar</a>
-                    <button type="button" class="btn btn-danger" onclick="confirmarExclusao({{ r.id }}, '{{ r.nome | e }}')">🗑️ Excluir</button>
+                <div class="col">
+                    <label>Função</label>
+                    <select name="funcoes[]" class="form-select funcao" data-selected="{{ funcao_id }}">
+                        <option disabled selected>Carregando funções...</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+                    <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                        {% set selected_days = (dias_da_semana_str or '').split(',') %}
+                        <option value="Segunda-feira" {% if 'Segunda-feira' in selected_days %}selected{% endif %}>Segunda-feira</option>
+                        <option value="Terça-feira" {% if 'Terça-feira' in selected_days %}selected{% endif %}>Terça-feira</option>
+                        <option value="Quarta-feira" {% if 'Quarta-feira' in selected_days %}selected{% endif %}>Quarta-feira</option>
+                        <option value="Quinta-feira" {% if 'Quinta-feira' in selected_days %}selected{% endif %}>Quinta-feira</option>
+                        <option value="Sexta-feira" {% if 'Sexta-feira' in selected_days %}selected{% endif %}>Sexta-feira</option>
+                        <option value="Sábado" {% if 'Sábado' in selected_days %}selected{% endif %}>Sábado</option>
+                        <option value="Domingo" {% if 'Domingo' in selected_days %}selected{% endif %}>Domingo</option>
+                    </select>
+                    <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+                </div>
+                <div class="col">
+                    <label>Turno</label>
+                    <select name="turnos[]" class="form-select">
+                        <option disabled {% if not turno %}selected{% endif %}>Selecione o turno</option>
+                        <option value="Manhã" {% if turno == 'Manhã' %}selected{% endif %}>Manhã</option>
+                        <option value="Tarde" {% if turno == 'Tarde' %}selected{% endif %}>Tarde</option>
+                        <option value="Noite" {% if turno == 'Noite' %}selected{% endif %}>Noite</option>
+                        <option value="Não se aplica" {% if turno == 'Não se aplica' %}selected{% endif %}>Não se aplica</option>
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
                 </div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
-    {% else %}
-        <p class="alert alert-info">Nenhum resultado encontrado.</p>
-    {% endif %}
-    <a href="/painel" class="btn btn-primary mt-4">Voltar</a>
-</div>
 
-<!-- Modal de Confirmação de Exclusão (Customizado) -->
-<div class="modal fade" id="confirmarExclusaoModal" tabindex="-1" aria-labelledby="confirmarExclusaoModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="confirmarExclusaoModalLabel">Confirmar Exclusão</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        Tem certeza que deseja excluir o trabalhador <strong id="nomeTrabalhadorExcluir"></strong>? Esta ação é irreversível.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">Excluir</button>
-      </div>
-    </div>
-  </div>
+        <button type="button" class="btn btn-secondary mt-2" onclick="adicionarVinculo()">➕ Adicionar outro Setor</button>
+
+        <div class="d-flex justify-content-between mt-4">
+            <a href="/painel" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-success">Salvar Alterações</button>
+        </div>
+    </form>
 </div>
 
 <script>
-// Variável global para armazenar o ID do trabalhador a ser excluído
-let trabalhadorIdParaExcluir = null;
-
-// Função para exibir o modal de confirmação
-function confirmarExclusao(trabalhadorId, trabalhadorNome) {
-    console.log("1. confirmarExclusao chamada com ID:", trabalhadorId, "Nome:", trabalhadorNome);
-    trabalhadorIdParaExcluir = trabalhadorId;
-    $('#nomeTrabalhadorExcluir').text(trabalhadorNome); // Atualiza o nome no modal
-    
-    // Agora que o Bootstrap JS é carregado no base.html, bootstrap.Modal DEVE estar disponível.
-    // Removido o fallback window.confirm, pois o modal deve funcionar.
-    const myModal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
-    myModal.show();
-    console.log("2. Modal de confirmação exibido.");
-}
-
-// Função para executar a exclusão (separada para ser chamada do modal)
-function executarExclusao() {
-    if (trabalhadorIdParaExcluir !== null) {
-        console.log("3. Botão 'Excluir' do modal clicado. Enviando requisição para:", `/deletar/${trabalhadorIdParaExcluir}`);
-        
-        // Esconde o modal ANTES de enviar a requisição
-        const myModal = bootstrap.Modal.getInstance(document.getElementById('confirmarExclusaoModal'));
-        if (myModal) myModal.hide(); // Verifica se o modal existe antes de tentar esconder
-
-        fetch(`/deletar/${trabalhadorIdParaExcluir}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            console.log("4. Resposta da requisição recebida. Status:", response.status);
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.message || "Erro desconhecido no servidor."); });
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("5. Dados da resposta:", data);
-            if (data.success) {
-                console.log("6. Exclusão bem-sucedida no backend. Removendo elemento da interface.");
-                const elementoTrabalhador = document.getElementById(`trabalhador-${trabalhadorIdParaExcluir}`);
-                if (elementoTrabalhador) {
-                    elementoTrabalhador.remove();
-                    console.log("7. Elemento removido da DOM.");
-                }
-            } else {
-                console.error("8. Erro reportado pelo backend:", data.message);
-            }
-        })
-        .catch(error => {
-            console.error("9. Erro na requisição de exclusão (rede ou servidor):", error);
-        })
-        .finally(() => {
-            trabalhadorIdParaExcluir = null; // Limpa o ID após a tentativa de exclusão
-            console.log("10. Processo de exclusão finalizado.");
-        });
+function atualizarDiasDaSemanaHidden(vinculoDiv) {
+    const selectDias = vinculoDiv.querySelector('.dias-da-semana-select');
+    const hiddenInput = vinculoDiv.querySelector('.dias-da-semana-hidden-input');
+    if (selectDias && hiddenInput) {
+        const selectedOptions = Array.from(selectDias.selectedOptions).map(option => option.value);
+        hiddenInput.value = selectedOptions.join(',');
     }
 }
 
-// Evento de clique no botão "Excluir" dentro do modal
-// Este listener é adicionado uma única vez quando o DOM está pronto
-document.getElementById('btnConfirmarExclusao').addEventListener('click', executarExclusao);
+function aplicarEventosVinculo(vinculo) {
+    const selectSetor = vinculo.querySelector('.setor');
+    const selectFuncao = vinculo.querySelector('.funcao');
+    const funcaoSelecionada = selectFuncao.getAttribute('data-selected');
+    const selectDiasDaSemana = vinculo.querySelector('.dias-da-semana-select'); // Seleciona o select de dias
 
-// Removidas as verificações de jQuery e Bootstrap no DOMContentLoaded,
-// pois agora eles são carregados no base.html e devem estar sempre disponíveis.
-</script>
-{% endblock %}
+    function carregarFuncoes(setorId, funcaoParaSelecionar = null) {
+        if (!setorId) {
+            selectFuncao.innerHTML = '<option disabled selected>Selecione o setor primeiro</option>';
+            return;
+        }
+        fetch(`/api/funcoes_por_setor/${setorId}`)
+            .then(res => res.json())
+            .then(data => {
+                selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
+                data.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.id;
+                    opt.textContent = item.nome;
+                    if (funcaoParaSelecionar && item.id == funcaoParaSelecionar) {
+                        opt.selected = true;
+                    }
+                    selectFuncao.appendChild(opt);
+                });
+            })
+            .catch(err => console.error("Erro ao buscar funções:", err));
+    }
+
+    if (selectSetor && selectFuncao) {
+        selectSetor.addEventListener('change', function () {
+            carregarFuncoes(this.value);
+        });
+
+        if (selectSetor.value) {
+            carregarFuncoes(selectSetor.value, funcaoSelecionada);
+        }
+    }
+
+    // Adiciona listener para o select de dias da semana
+    if (selectDiasDaSemana) {
+        selectDiasDaSemana.addEventListener('change', () => atualizarDiasDaSemanaHidden(vinculo));
+        // Chama a função uma vez para preencher o campo oculto no carregamento da página (se houver valores pré-selecionados)
+        // Isso é crucial para o modo de edição, para que os dias já selecionados sejam passados para o campo hidden.
+        atualizarDiasDaSemanaHidden(vinculo);
+    }
+
+    const btnRemover = vinculo.querySelector('.remover-vinculo');
+    if (btnRemover) {
+        btnRemover.addEventListener('click', () => vinculo.remove());
+    }
+}
+
+function adicionarVinculo() {
+    const container = document.getElementById("vinculos");
+    const div = document.createElement('div');
+    div.className = 'row g-3 align-items-end mb-3 vinculo';
+    div.innerHTML = `
+        <div class="col">
+            <label>Setor</label>
+            <select name="setores[]" class="form-select setor">
+                <option disabled selected>Selecione o setor</option>
+                {% for id, nome in setores %}
+                    <option value="{{ id }}">{{ nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col">
+            <label>Função</label>
+            <select name="funcoes[]" class="form-select funcao">
+                <option disabled selected>Selecione o setor primeiro</option>
+            </select>
+        </div>
+        <div class="col">
+            <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+            <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                <option value="Segunda-feira">Segunda-feira</option>
+                <option value="Terça-feira">Terça-feira</option>
+                <option value="Quarta-feira">Quarta-feira</option>
+                <option value="Quinta-feira">Quinta-feira</option>
+                <option value="Sexta-feira">Sexta-feira</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+            </select>
+            <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+        </div>
+        <div class="col">
+            <label>Turno</label>
+            <select name="turnos[]" class="form-select">
+                <option value="Manhã">Manhã</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noite">Noite</option>
+                <option value="Não se aplica">Não se aplica</option> {# Nova opção #}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
+        </div>
+    `;
+    container.appendChild(div);
+    aplicarEventosVinculo(div);
+}
+
+// ⬇⬇⬇ Função de validação de CPF
+function validarCPF(cpf) {
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+        soma += parseInt(cpf.charAt(i)) * (10 - i);
+    }
+    let resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.charAt(9))) return false;
+
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+        soma += parseInt(cpf.charAt(i)) * (11 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.charAt(10))) return false;
+
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
+
+    // Validação do CPF
+    const cpfInput = document.getElementById('cpf');
+    const cpfErro = document.getElementById('cpfErro');
+
+    if (cpfInput && cpfErro) {
+        cpfInput.addEventListener('blur', function () {
+            const cpf = this.value;
+            if (cpf.length > 0 && !validarCPF(cpf)) {
+                cpfErro.style.display = 'block';
+                this.classList.add('is-invalid');
+                // Não chama focus aqui para evitar loop se o usuário focar e desfocar rapidamente
+            } else {
+                cpfErro.style.display = 'none';
+                this.classList.remove('is-invalid');
+            }
+        });
+
+        // Adiciona validação no submit do formulário também para o CPF
+        const form = document.querySelector("form");
+        if (form) {
+            form.addEventListener("submit", function (e) {
+                if (cpfInput && cpfErro) {
+                    const cpf = cpfInput.value;
+                    if (!validarCPF(cpf)) {
+                        e.preventDefault();
+                        cpfErro.style.display = "block";
+                        cpfInput.classList.add('is-invalid');
+                        cpfInput.focus();
+                    } else {
+                        cpfErro.style.display = "none";
+                        cpfInput.classList.remove('is-invalid');
+                    }
+                }
+            });
+        }
+    }
+
+    const cepInput = document.getElementById("cep"); // Corrigido para pegar pelo ID
+    if (cepInput) {
+        cepInput.addEventListener('blur', function () {
+            const cep = this.value.replace(/\D/g, '');
+            if (cep.length === 8) {
+                const ruaInput = document.querySelector('input[name="rua"]');
+                const numeroInput = document.querySelector('input[name="numero"]'); // Adicionado
+                const complementoInput = document.querySelector('input[name="complemento"]'); // Adicionado
+                const bairroInput = document.querySelector('input[name="bairro"]');
+                const cidadeInput = document.querySelector('input[name="cidade"]');
+                const estadoInput = document.querySelector('input[name="estado"]');
+
+                ruaInput.value = 'Carregando...';
+                numeroInput.value = ''; // Limpa o número ao carregar CEP
+                complementoInput.value = ''; // Limpa o complemento ao carregar CEP
+                bairroInput.value = 'Carregando...';
+                cidadeInput.value = 'Carregando...';
+                estadoInput.value = 'Carregando...';
+
+                // Desabilitar campos enquanto carrega
+                ruaInput.disabled = true;
+                numeroInput.disabled = true;
+                complementoInput.disabled = true;
+                bairroInput.disabled = true;
+                cidadeInput.disabled = true;
+                estadoInput.disabled = true;
+
+
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.erro) {
+                            ruaInput.value = data.logradouro || '';
+                            bairroInput.value = data.bairro || '';
+                            cidadeInput.value = data.localidade || '';
+                            estadoInput.value = data.uf || '';
+                            // O ViaCEP geralmente não retorna número ou complemento, então eles permanecem vazios ou como estavam
+                        } else {
+                            ruaInput.value = '';
+                            numeroInput.value = '';
+                            complementoInput.value = '';
+                            bairroInput.value = '';
+                            cidadeInput.value = '';
+                            estadoInput.value = '';
+                            alert("CEP não encontrado.");
+                        }
+                    })
+                    .catch(error => {
+                        ruaInput.value = '';
+                        numeroInput.value = '';
+                        complementoInput.value = '';
+                        bairroInput.value = '';
+                        cidadeInput.value = '';
+                        estadoInput.value = '';
+                        console.error("Erro ao buscar o CEP:", error);
+                        alert("Erro ao buscar o CEP.");
+                    })
+                    .finally(() => {
+                        // Reabilitar campos
+                        ruaInput.disabled = false;
+                        numeroInput.disabled = false;
+                        complementoInput.disabled = false;
+                        bairroInput.disabled = false;
+                        cidadeInput.disabled = false;
+                        estadoInput.disabled = false;
+                    });
+            } else {
+                // Se o CEP for inválido, limpa os campos de endereço
+                document.querySelector('input[name="rua"]').value = '';
+                document.querySelector('input[name="numero"]').value = '';
+                document.querySelector('input[name="complemento"]').value = '';
+                document.querySelector('input[name="bairro"]').value = '';
+                document.querySelector('input[name="cidade"]').value = '';
+                document.querySelector('input[name="estado"]').value = '';
+            }
+        });
+    }
+
+    // Função para alternar a visibilidade da senha
+    function togglePasswordVisibility(input, button) {
+        if (input.type === 'password') {
+            input.type = 'text';
+            button.innerHTML = '🙈'; // Ícone de olho riscado (ocultar)
+        } else {
+            input.type = 'password';
+            button.innerHTML = '👁️'; // Ícone de olho (mostrar)
+        }
+    }
+
+    // Event Listeners para alternar visibilidade
+    if (togglePasswordButton && passwordInput) {
+        togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
+    }
+    if (toggleConfirmPasswordButton && confirmPasswordInput) {
+        toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
+    }
+
+    // Event Listener para gerar senha forte
+    if (generatePasswordButton && passwordInput && confirmPasswordInput) {
+        generatePasswordButton.addEventListener('click', function () {
+            const newPassword = generateStrongPassword(12);
+            passwordInput.value = newPassword;
+            confirmPasswordInput.value = newPassword; // Preenche o campo de confirmação também
+            passwordInput.type = 'text'; // Mostra a senha gerada
+            confirmPasswordInput.type = 'text';
+            if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
+            if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
+            if (passwordMatchError) passwordMatchError.style.display = 'none'; // Esconde a mensagem de erro se houver
+        });
+    }
+
+    // Validação de senhas coincidentes ao perder o foco
+    if (passwordInput && confirmPasswordInput && passwordMatchError) {
+        confirmPasswordInput.addEventListener('blur', function () {
+            if (passwordInput.value !== this.value) {
+                passwordMatchError.style.display = 'block';
+                confirmPasswordInput.classList.add('is-invalid');
+            } else {
+                passwordMatchError.style.display = 'none';
+                confirmPasswordInput.classList.remove('is-invalid');
+            }
+        });
+        // Também valida quando a senha principal muda
+        passwordInput.addEventListener('blur', function() {
+            if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
+                passwordMatchError.style.display = 'block';
+                confirmPasswordInput.classList.add('is-invalid');
+            } else {
+                passwordMatchError.style.display = 'none';
+                confirmPasswordInput.classList.remove('is-invalid');
+            }
+        });
+    }
+});
+
+function generateStrongPassword(length) {
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
+    let password = "";
+
+    const types = [
+        "abcdefghijklmnopqrstuvwxyz",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "0123456789",
+        "!@#$%^&*()_+~`|}{[]:;?><,./-="
+    ];
+
+    for (let i = 0; i < types.length; i++) {
+        password += getRandomChar(types[i]);
+    }
+
+    for (let i = types.length; i < length; i++) {
+        password += getRandomChar(charset);
+    }
+
+    password = password.split('').sort(() => 0.5 - Math.random()).join('');
+
+    return password;
+}
+
+function getRandomChar(charset) {
+    return charset[Math.floor(Math.random() * charset.length)];
+}
+
+function adicionarVinculo() {
+    const container = document.getElementById("vinculos");
+    const div = document.createElement('div');
+    div.className = 'row g-3 align-items-end mb-3 vinculo';
+
+    div.innerHTML = `
+        <div class="col">
+            <label for="setores[]" class="form-label">Setor:</label>
+            <select name="setores[]" class="form-select setor">
+                <option disabled selected>Selecione o setor</option>
+                {% for id, nome in setores %}
+                    <option value="{{ id }}">{{ nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col">
+            <label for="funcoes[]" class="form-label">Função:</label>
+            <select name="funcoes[]" class="form-select funcao">
+                <option disabled selected>Selecione o setor primeiro</option>
+            </select>
+        </div>
+        <div class="col">
+            <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+            <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                <option value="Segunda-feira">Segunda-feira</option>
+                <option value="Terça-feira">Terça-feira</option>
+                <option value="Quarta-feira">Quarta-feira</option>
+                <option value="Quinta-feira">Quinta-feira</option>
+                <option value="Sexta-feira">Sexta-feira</option>
+                <option value="Sábado">Sábado</option>
+                <option value="Domingo">Domingo</option>
+            </select>
+            <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+        </div>
+        <div class="col">
+            <label for="turnos[]" class="form-label">Turno:</label>
+            <select name="turnos[]" class="form-select">
+                <option value="Manhã">Manhã</option>
+                <option value="Tarde">Tarde</option>
+                <option value="Noite">Noite</option>
+                <option value="Não se aplica">Não se aplica</option> {# Added option #}
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
+        </div>
+    `;
+    container.appendChild(div);
+    aplicarEventosVinculo(div);
+}
