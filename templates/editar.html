@@ -202,9 +202,10 @@ function adicionarVinculo() {
     const container = document.getElementById("vinculos");
     const div = document.createElement('div');
     div.className = 'row g-3 align-items-end mb-3 vinculo';
+
     div.innerHTML = `
         <div class="col">
-            <label>Setor</label>
+            <label for="setores[]" class="form-label">Setor:</label>
             <select name="setores[]" class="form-select setor">
                 <option disabled selected>Selecione o setor</option>
                 {% for id, nome in setores %}
@@ -213,7 +214,7 @@ function adicionarVinculo() {
             </select>
         </div>
         <div class="col">
-            <label>Função</label>
+            <label for="funcoes[]" class="form-label">Função:</label>
             <select name="funcoes[]" class="form-select funcao">
                 <option disabled selected>Selecione o setor primeiro</option>
             </select>
@@ -304,7 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         cpfInput.classList.add('is-invalid');
                         cpfInput.focus();
                     } else {
-                        cpfErro.style.display = "none";
+                        cpfErro.style.display = 'none';
                         cpfInput.classList.remove('is-invalid');
                     }
                 }
