@@ -61,8 +61,8 @@
             <input type="text" name="numero" id="numero" class="form-control" value="{{ trabalhador[8] }}">
         </div>
         <div class="mb-3">
-            <label for="complemento" class="form-label">Complemento</label> {# Novo campo Complemento #}
-            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control" value="{{ trabalhador[12] if trabalhador[12] else '' }}"> {# Preenche com o valor existente #}
+            <label for="complemento" class="form-label">Complemento</label>
+            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control" value="{{ trabalhador[12] if trabalhador[12] else '' }}">
         </div>
         <div class="mb-3">
             <label>Bairro</label>
@@ -232,12 +232,12 @@ function adicionarVinculo() {
             <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
         </div>
         <div class="col">
-            <label>Turno</label>
+            <label for="turnos[]" class="form-label">Turno:</label>
             <select name="turnos[]" class="form-select">
                 <option value="Manhã">Manhã</option>
                 <option value="Tarde">Tarde</option>
                 <option value="Noite">Noite</option>
-                <option value="Não se aplica">Não se aplica</option> {# Nova opção #}
+                <option value="Não se aplica">Não se aplica</option>
             </select>
         </div>
         <div class="col-auto">
@@ -515,7 +515,7 @@ function adicionarVinculo() {
                 <option value="Manhã">Manhã</option>
                 <option value="Tarde">Tarde</option>
                 <option value="Noite">Noite</option>
-                <option value="Não se aplica">Não se aplica</option> {# Added option #}
+                <option value="Não se aplica">Não se aplica</option>
             </select>
         </div>
         <div class="col-auto">
