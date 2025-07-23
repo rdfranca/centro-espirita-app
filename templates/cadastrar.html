@@ -254,17 +254,17 @@ if (cepInput) aplicarMascaraCEP(cepInput);
     if (form) {
         form.addEventListener("submit", function (e) {
             if (cpfInput && cpfErro) {
-                const cpf = cpfInput.value;
-                if (!validarCPF(cpf)) {
-                    e.preventDefault();
-                    cpfErro.style.display = "block";
-                    cpfInput.classList.add('is-invalid');
-                    cpfInput.focus();
-                } else {
-                    cpfErro.style.display = "none";
-                    cpfInput.classList.remove('is-invalid');
-                }
-            }
+        const cpf = cpfInput.value.replace(/\D/g, ''); // <-- REMOVE a máscara
+        if (!validarCPF(cpf)) {
+            e.preventDefault();
+            cpfErro.style.display = "block";
+            cpfInput.classList.add('is-invalid');
+            cpfInput.focus();
+        } else {
+            cpfErro.style.display = "none";
+            cpfInput.classList.remove('is-invalid');
+        }
+    }
 
             // Validação de senhas coincidentes antes do envio do formulário
             if (passwordInput && confirmPasswordInput && passwordMatchError) {
@@ -284,15 +284,15 @@ if (cepInput) aplicarMascaraCEP(cepInput);
     // Validação de CPF ao perder o foco (blur)
     if (cpfInput && cpfErro) {
         cpfInput.addEventListener('blur', function () {
-            const cpf = this.value;
-            if (cpf.length > 0 && !validarCPF(cpf)) {
-                cpfErro.style.display = 'block';
-                this.classList.add('is-invalid');
-            } else {
-                cpfErro.style.display = 'none';
-                this.classList.remove('is-invalid');
-            }
-        });
+    const cpf = this.value.replace(/\D/g, ''); // <-- REMOVE a máscara
+    if (cpf.length > 0 && !validarCPF(cpf)) {
+        cpfErro.style.display = 'block';
+        this.classList.add('is-invalid');
+    } else {
+        cpfErro.style.display = 'none';
+        this.classList.remove('is-invalid');
+    }
+});
     }
 
     // Preenchimento de CEP
