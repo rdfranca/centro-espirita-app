@@ -203,10 +203,43 @@ function validarCPF(cpf) {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+
+function aplicarMascaraCPF(campo) {
+    campo.addEventListener('input', function () {
+        let value = this.value.replace(/\D/g, '').slice(0, 11);
+        if (value.length > 9)
+            this.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+        else if (value.length > 6)
+            this.value = value.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
+        else if (value.length > 3)
+            this.value = value.replace(/(\d{3})(\d{0,3})/, "$1.$2");
+        else
+            this.value = value;
+    });
+}
+
+function aplicarMascaraCEP(campo) {
+    campo.addEventListener('input', function () {
+        let value = this.value.replace(/\D/g, '').slice(0, 8);
+        if (value.length > 5)
+            this.value = value.replace(/(\d{5})(\d{0,3})/, "$1-$2");
+        else
+            this.value = value;
+    });
+}
+
+// Essas linhas devem estar FORA das funções acima:
+const cpfInput = document.getElementById("cpf");
+if (cpfInput) aplicarMascaraCPF(cpfInput);
+
+const cepInput = document.getElementById("cep");
+if (cepInput) aplicarMascaraCEP(cepInput);
+
+
     document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
 
     const form = document.querySelector("form");
-    const cpfInput = document.getElementById("cpf");
+    
     const cpfErro = document.getElementById("cpfErro");
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
@@ -214,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
     const generatePasswordButton = document.getElementById('generatePassword');
     const passwordMatchError = document.getElementById('passwordMatchError');
-    const cepInput = document.getElementById("cep");
+   
 
 
     // Validação de CPF antes do envio do formulário
