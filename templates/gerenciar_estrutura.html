@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Gerenciar Setores e Funções</h1>
+
+    <div class="row">
+        {# Seção de Setores #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Setores</h5>
+                </div>
+                <div class="card-body">
+                    {# Formulário para Adicionar Setor #}
+                    <form action="{{ url_for('adicionar_setor') }}" method="POST" class="mb-4">
+                        <div class="input-group">
+                            <input type="text" name="nome" class="form-control" placeholder="Novo nome do setor" required>
+                            <button type="submit" class="btn btn-primary">Adicionar Setor</button>
+                        </div>
+                    </form>
+
+                    {# Lista de Setores #}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome do Setor</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for setor_id, setor_nome in setores %}
+                                <tr id="setor-{{ setor_id }}">
+                                    <td>{{ setor_id }}</td>
+                                    <td>
+                                        <span id="setor-nome-{{ setor_id }}">{{ setor_nome }}</span>
+                                        <form action="{{ url_for('editar_setor', setor_id=setor_id) }}" method="POST" class="d-none editar-setor-form">
+                                            <div class="input-group">
+                                                <input type="text" name="nome" value="{{ setor_nome }}" class="form-control form-control-sm" required>
+                                                <button type="submit" class="btn btn-success btn-sm">Salvar</button>
+                                                <button type="button" class="btn btn-secondary btn-sm cancelar-edicao">Cancelar</button>
+                                            </div>
+                                        </form>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-warning btn-sm editar-btn" data-id="{{ setor_id }}" data-tipo="setor">✏️</button>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="confirmarExclusaoModal('setor', {{ setor_id }}, '{{ setor_nome | e }}')">🗑️</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Seção de Funções #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Funções</h5>
+                </div>
+                <div class="card-body">
+                    {# Formulário para Adicionar Função #}
+                    <form action="{{ url_for('adicionar_funcao') }}" method="POST" class="mb-4">
+                        <div class="mb-2">
+                            <input type="text" name="nome" class="form-control" placeholder="Novo nome da função" required>
+                        </div>
+                        <div class="input-group">
+                            <select name="setor_id" class="form-select" required>
+                                <option value="" disabled selected>Selecione o setor</option>
+                                {% for setor_id, setor_nome in setores %}
+                                    <option value="{{ setor_id }}">{{ setor_nome }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-primary">Adicionar Função</button>
+                        </div>
+                    </form>
+
+                    {# Lista de Funções #}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome da Função</th>
+                                    <th>Setor</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for funcao_id, funcao_nome, setor_nome, setor_id in funcoes %}
+                                <tr id="funcao-{{ funcao_id }}">
+                                    <td>{{ funcao_id }}</td>
+                                    <td>
+                                        <span id="funcao-nome-{{ funcao_id }}">{{ funcao_nome }}</span>
+                                        <form action="{{ url_for('editar_funcao', funcao_id=funcao_id) }}" method="POST" class="d-none editar-funcao-form">
+                                            <div class="input-group">
+                                                <input type="text" name="nome" value="{{ funcao_nome }}" class="form-control form-control-sm mb-1" required>
+                                            </div>
+                                            <div class="input-group">
+                                                <select name="setor_id" class="form-select form-select-sm" required>
+                                                    <option value="" disabled>Selecione o setor</option>
+                                                    {% for s_id, s_nome in setores %}
+                                                        <option value="{{ s_id }}" {% if s_id == setor_id %}selected{% endif %}>{{ s_nome }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                                <button type="submit" class="btn btn-success btn-sm">Salvar</button>
+                                                <button type="button" class="btn btn-secondary btn-sm cancelar-edicao">Cancelar</button>
+                                            </div>
+                                        </form>
+                                    </td>
+                                    <td>{{ setor_nome or 'N/A' }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-warning btn-sm editar-btn" data-id="{{ funcao_id }}" data-tipo="funcao">✏️</button>
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="confirmarExclusaoModal('funcao', {{ funcao_id }}, '{{ funcao_nome | e }}')">🗑️</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="/painel" class="btn btn-primary mt-4">Voltar ao Painel</a>
+</div>
+
+<div class="modal fade" id="confirmarExclusaoModal" tabindex="-1" aria-labelledby="confirmarExclusaoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="confirmarExclusaoModalLabel">Confirmar Exclusão</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Tem certeza que deseja excluir <strong id="nomeEntidadeExcluir"></strong>? Esta ação é irreversível e removerá também todos os vínculos associados.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarExclusao">Excluir</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    // Variáveis globais para armazenar o ID e o tipo da entidade a ser excluída
+    let entidadeIdParaExcluir = null;
+    let entidadeTipoParaExcluir = null;
+
+    // Função para exibir o modal de confirmação
+    function confirmarExclusaoModal(tipo, id, nome) {
+        entidadeTipoParaExcluir = tipo;
+        entidadeIdParaExcluir = id;
+        document.getElementById('nomeEntidadeExcluir').innerText = `${tipo === 'setor' ? 'o setor' : 'a função'} ${nome}`;
+        const myModal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
+        myModal.show();
+    }
+
+    // Função para executar a exclusão
+    document.getElementById('btnConfirmarExclusao').addEventListener('click', function() {
+        if (entidadeIdParaExcluir !== null && entidadeTipoParaExcluir !== null) {
+            const endpoint = `/${entidadeTipoParaExcluir}/deletar/${entidadeIdParaExcluir}`;
+            
+            const myModal = bootstrap.Modal.getInstance(document.getElementById('confirmarExclusaoModal'));
+            if (myModal) myModal.hide();
+
+            fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.message || "Erro desconhecido no servidor."); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Remove a linha da tabela
+                    const elementoParaRemover = document.getElementById(`${entidadeTipoParaExcluir}-${entidadeIdParaExcluir}`);
+                    if (elementoParaRemover) {
+                        elementoParaRemover.remove();
+                    }
+                    // Recarrega a página para atualizar as listas (ou pode usar JS mais avançado)
+                    location.reload(); 
+                } else {
+                    console.error("Erro reportado pelo backend:", data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Erro na requisição de exclusão:", error);
+                alert(`Ocorreu um erro ao tentar excluir: ${error.message}`);
+            })
+            .finally(() => {
+                entidadeIdParaExcluir = null;
+                entidadeTipoParaExcluir = null;
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Lógica para alternar entre visualizar e editar setor/função
+        document.querySelectorAll('.editar-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.dataset.id;
+                const tipo = this.dataset.tipo; // 'setor' ou 'funcao'
+                const row = document.getElementById(`${tipo}-${id}`);
+                
+                const displaySpan = row.querySelector(`#${tipo}-nome-${id}`);
+                const editForm = row.querySelector(`.editar-${tipo}-form`);
+
+                if (displaySpan && editForm) {
+                    displaySpan.classList.add('d-none');
+                    editForm.classList.remove('d-none');
+                    this.classList.add('d-none'); // Esconde o botão editar
+                }
+            });
+        });
+
+        document.querySelectorAll('.cancelar-edicao').forEach(button => {
+            button.addEventListener('click', function() {
+                const form = this.closest('form');
+                const row = this.closest('tr');
+                const tipo = form.className.includes('editar-setor-form') ? 'setor' : 'funcao';
+                const id = row.id.split('-')[1];
+
+                const displaySpan = row.querySelector(`#${tipo}-nome-${id}`);
+                const editButton = row.querySelector(`.editar-btn[data-id="${id}"][data-tipo="${tipo}"]`);
+
+                if (displaySpan && form && editButton) {
+                    displaySpan.classList.remove('d-none');
+                    form.classList.add('d-none');
+                    editButton.classList.remove('d-none');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -153,7 +153,7 @@ def cadastrar():
     cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
     setores = cursor.fetchall()
     conn.close()
-    return render_template("cadastrar.html", setores=setores) # Passa apenas setores
+    return render_template("cadastrar.html", setores=setores)
 
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
 @login_required # Protege esta rota
@@ -487,6 +487,189 @@ def api_setores_para_filtro():
     setores = cursor.fetchall()
     conn.close()
     return jsonify([{'id': s[0], 'nome': s[1]} for s in setores])
+
+
+# --- NOVAS ROTAS PARA GERENCIAMENTO DE SETORES E FUNÇÕES ---
+
+@app.route('/gerenciar_estrutura')
+@login_required
+def gerenciar_estrutura():
+    conn = conectar()
+    cursor = conn.cursor()
+
+    # Buscar setores
+    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
+    setores = cursor.fetchall()
+
+    # Buscar funções com seus setores
+    cursor.execute("""
+        SELECT f.id, f.nome, s.nome as setor_nome, f.setor_id
+        FROM funcao f
+        LEFT JOIN setores s ON f.setor_id = s.id
+        ORDER BY s.nome, f.nome
+    """)
+    funcoes = cursor.fetchall()
+
+    conn.close()
+    return render_template('gerenciar_estrutura.html', setores=setores, funcoes=funcoes)
+
+@app.route('/setor/adicionar', methods=['POST'])
+@login_required
+def adicionar_setor():
+    nome = request.form.get('nome')
+    if not nome:
+        flash("O nome do setor não pode ser vazio.", "danger")
+        return redirect(url_for('gerenciar_estrutura'))
+
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO setores (nome) VALUES (%s)", (nome,))
+        conn.commit()
+        flash(f"Setor '{nome}' adicionado com sucesso!", "success")
+    except psycopg2.errors.UniqueViolation: # Se o nome do setor for UNIQUE
+        conn.rollback()
+        flash(f"O setor '{nome}' já existe.", "warning")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao adicionar setor: {str(e)}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for('gerenciar_estrutura'))
+
+@app.route('/setor/editar/<int:setor_id>', methods=['POST'])
+@login_required
+def editar_setor(setor_id):
+    novo_nome = request.form.get('nome')
+    if not novo_nome:
+        flash("O nome do setor não pode ser vazio.", "danger")
+        return redirect(url_for('gerenciar_estrutura'))
+
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE setores SET nome = %s WHERE id = %s", (novo_nome, setor_id))
+        conn.commit()
+        if cursor.rowcount == 0:
+            flash("Setor não encontrado.", "danger")
+        else:
+            flash(f"Setor atualizado para '{novo_nome}' com sucesso!", "success")
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        flash(f"O setor '{novo_nome}' já existe.", "warning")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao editar setor: {str(e)}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for('gerenciar_estrutura'))
+
+@app.route('/setor/deletar/<int:setor_id>', methods=['POST'])
+@login_required
+def deletar_setor(setor_id):
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        # Primeiro, remover vínculos de trabalhador com funções neste setor
+        cursor.execute("""
+            DELETE FROM trabalhador_setor_funcao
+            WHERE setor_id = %s
+        """, (setor_id,))
+
+        # Depois, remover funções associadas a este setor
+        cursor.execute("DELETE FROM funcao WHERE setor_id = %s", (setor_id,))
+
+        # Finalmente, remover o setor
+        cursor.execute("DELETE FROM setores WHERE id = %s", (setor_id,))
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({"success": False, "message": "Setor não encontrado."}), 404
+        flash("Setor e suas funções/vínculos excluídos com sucesso!", "success")
+        return jsonify({"success": True, "message": "Setor excluído com sucesso!"}), 200
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro ao excluir setor: {e}")
+        return jsonify({"success": False, "message": f"Erro ao excluir setor: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+@app.route('/funcao/adicionar', methods=['POST'])
+@login_required
+def adicionar_funcao():
+    nome = request.form.get('nome')
+    setor_id = request.form.get('setor_id')
+
+    if not nome or not setor_id:
+        flash("Nome da função e setor são obrigatórios.", "danger")
+        return redirect(url_for('gerenciar_estrutura'))
+
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO funcao (nome, setor_id) VALUES (%s, %s)", (nome, setor_id))
+        conn.commit()
+        flash(f"Função '{nome}' adicionada com sucesso!", "success")
+    except psycopg2.errors.UniqueViolation: # Se o nome da função for UNIQUE dentro de um setor
+        conn.rollback()
+        flash(f"A função '{nome}' já existe neste setor.", "warning")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao adicionar função: {str(e)}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for('gerenciar_estrutura'))
+
+@app.route('/funcao/editar/<int:funcao_id>', methods=['POST'])
+@login_required
+def editar_funcao(funcao_id):
+    novo_nome = request.form.get('nome')
+    novo_setor_id = request.form.get('setor_id')
+
+    if not novo_nome or not novo_setor_id:
+        flash("Nome da função e setor são obrigatórios.", "danger")
+        return redirect(url_for('gerenciar_estrutura'))
+
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE funcao SET nome = %s, setor_id = %s WHERE id = %s", (novo_nome, novo_setor_id, funcao_id))
+        conn.commit()
+        if cursor.rowcount == 0:
+            flash("Função não encontrada.", "danger")
+        else:
+            flash(f"Função atualizada para '{novo_nome}' com sucesso!", "success")
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        flash(f"A função '{novo_nome}' já existe neste setor.", "warning")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao editar função: {str(e)}", "danger")
+    finally:
+        conn.close()
+    return redirect(url_for('gerenciar_estrutura'))
+
+@app.route('/funcao/deletar/<int:funcao_id>', methods=['POST'])
+@login_required
+def deletar_funcao(funcao_id):
+    conn = conectar()
+    cursor = conn.cursor()
+    try:
+        # Remover vínculos de trabalhador com esta função
+        cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE funcao_id = %s", (funcao_id,))
+        
+        # Remover a função
+        cursor.execute("DELETE FROM funcao WHERE id = %s", (funcao_id,))
+        conn.commit()
+        if cursor.rowcount == 0:
+            return jsonify({"success": False, "message": "Função não encontrada."}), 404
+        flash("Função e seus vínculos excluídos com sucesso!", "success")
+        return jsonify({"success": True, "message": "Função excluída com sucesso!"}), 200
+    except Exception as e:
+        conn.rollback()
+        print(f"Erro ao excluir função: {e}")
+        return jsonify({"success": False, "message": f"Erro ao excluir função: {str(e)}"}), 500
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True)

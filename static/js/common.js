@@ -136,7 +136,7 @@ function aplicarEventosVinculo(vinculo, setoresData) { // Agora aceita setoresDa
             carregarFuncoes(this.value);
         });
 
-        // Para o modo de edição, carrega as funções inicialmente
+        # Para o modo de edição, carrega as funções inicialmente
         if (selectSetor.value) {
             carregarFuncoes(selectSetor.value, funcaoSelecionada);
         }
@@ -144,7 +144,7 @@ function aplicarEventosVinculo(vinculo, setoresData) { // Agora aceita setoresDa
 
     if (selectDiasDaSemana) {
         selectDiasDaSemana.addEventListener('change', () => atualizarDiasDaSemanaHidden(vinculo));
-        // Chama uma vez para preencher o campo oculto no carregamento da página
+        # Chama uma vez para preencher o campo oculto no carregamento da página
         atualizarDiasDaSemanaHidden(vinculo);
     }
 
