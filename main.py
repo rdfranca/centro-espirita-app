@@ -593,28 +593,30 @@ def deletar_setor(setor_id):
     finally:
         conn.close()
 
-@app.route('/funcao/adicionar', methods=['POST'])
+@app.route('/setor/adicionar', methods=['POST'])
 @login_required
-def adicionar_funcao():
+def adicionar_setor():
     nome = request.form.get('nome')
-    setor_id = request.form.get('setor_id')
-
-    if not nome or not setor_id:
-        flash("Nome da função e setor são obrigatórios.", "danger")
+    if not nome:
+        flash("O nome do setor não pode ser vazio.", "danger")
         return redirect(url_for('gerenciar_estrutura'))
+
+    # Normaliza o nome para minúsculas e remove espaços extras
+    nome_normalizado = nome.strip().lower() # .strip() remove espaços no início/fim
 
     conn = conectar()
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO funcao (nome, setor_id) VALUES (%s, %s)", (nome, setor_id))
+        # Use nome_normalizado na inserção
+        cursor.execute("INSERT INTO setores (nome) VALUES (%s)", (nome_normalizado,))
         conn.commit()
-        flash(f"Função '{nome}' adicionada com sucesso!", "success")
-    except psycopg2.errors.UniqueViolation: # Se o nome da função for UNIQUE dentro de um setor
+        flash(f"Setor '{nome}' adicionado com sucesso!", "success") # Mostra o nome original na flash
+    except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        flash(f"A função '{nome}' já existe neste setor.", "warning")
+        flash(f"O setor '{nome}' já existe.", "warning")
     except Exception as e:
         conn.rollback()
-        flash(f"Erro ao adicionar função: {str(e)}", "danger")
+        flash(f"Erro ao adicionar setor: {str(e)}", "danger")
     finally:
         conn.close()
     return redirect(url_for('gerenciar_estrutura'))
