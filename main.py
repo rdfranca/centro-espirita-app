@@ -10,6 +10,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_segura_e_aleatoria_aqui_12345")
 # --- FIM CONFIGURAÇÃO DE SESSÃO ---
 
+# ATENÇÃO: SUBSTITUA PELO ID REAL DO SETOR 'ENSINO' QUE VOCÊ OBTEVE NO BANCO DE DADOS.
+# Para obter este ID, execute no seu banco de dados: SELECT id FROM setores WHERE lower(nome) = 'ensino';
+# Se o setor 'Ensino' não existir, cadastre-o primeiro na página 'Gerenciar Estrutura'.
+ID_SETOR_ENSINO = 11 # <<<<<<<< SUBSTITUA ESTE VALOR PELO ID REAL DO SEU SETOR 'ENSINO'
 
 def conectar():
     """
@@ -109,6 +113,16 @@ def buscar():
         """, (t[0],))
         vinculos = cursor.fetchall()
 
+        # NOVO: Buscar cursos associados ao trabalhador para exibir nos resultados
+        cursor.execute("""
+            SELECT ce.nome
+            FROM trabalhador_curso_ensino tce
+            JOIN cursos_ensino ce ON tce.curso_id = ce.id
+            WHERE tce.trabalhador_id = %s
+        """, (t[0],))
+        cursos_trabalhador = [row[0] for row in cursor.fetchall()]
+
+
         vinculos_formatados = []
         for v in vinculos:
             setor, funcao, turno, dias_da_semana = v
@@ -135,7 +149,8 @@ def buscar():
             "estado": t[11],
             "complemento": t[12],
             "email": t[13],
-            "vinculos": vinculos_formatados
+            "vinculos": vinculos_formatados,
+            "cursos_ensino": cursos_trabalhador # NOVO: Adiciona cursos ao resultado
         })
 
     conn.close()
@@ -146,14 +161,25 @@ def buscar():
 def cadastrar():
     """
     Renderiza a página de cadastro de trabalhadores.
-    Busca todos os setores para preencher os selects iniciais.
+    Busca todos os setores, cursos disponíveis e mapeamento de função para setor.
     """
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
     setores = cursor.fetchall()
+    
+    cursor.execute("SELECT id, nome FROM cursos_ensino ORDER BY nome")
+    cursos_disponiveis = cursor.fetchall()
+
+    # NOVO: Mapeamento de funcao_id para setor_id
+    cursor.execute("SELECT id, setor_id FROM funcao")
+    funcao_setor_map = {row[0]: row[1] for row in cursor.fetchall()}
+
     conn.close()
-    return render_template("cadastrar.html", setores=setores)
+    return render_template("cadastrar.html", setores=setores,
+                           cursos_disponiveis=cursos_disponiveis,
+                           id_setor_ensino=ID_SETOR_ENSINO,       # ID do SETOR Ensino
+                           funcao_setor_map=funcao_setor_map)    # Mapeamento funcao->setor
 
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
 @login_required
@@ -209,7 +235,7 @@ def validar_cpf(cpf):
 @login_required
 def inserir():
     """
-    Insere um novo trabalhador, seu endereço, email, senha e seus vínculos de setor/função/turno no banco de dados.
+    Insere um novo trabalhador, seu endereço, email, senha, vínculos e cursos de ensino no banco de dados.
     """
     conn = conectar()
     cursor = conn.cursor()
@@ -224,7 +250,6 @@ def inserir():
     data_nascimento = request.form.get("nascimento")
     celular = request.form.get("celular")
     profissao = request.form.get("profissao")
-
     email = request.form.get("email")
     password = request.form.get("password")
     hashed_password = generate_password_hash(password)
@@ -242,6 +267,7 @@ def inserir():
     turnos = request.form.getlist("turnos[]")
     dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
 
+    cursos_selecionados = request.form.getlist("cursos_ensino[]") # Pega os cursos selecionados do formulário
 
     try:
         cursor.execute("""
@@ -266,6 +292,13 @@ def inserir():
                 INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
                 VALUES (%s, %s, %s, %s, %s)
             """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
+        
+        # Inserir cursos de ensino selecionados para o trabalhador
+        for curso_id in cursos_selecionados:
+            cursor.execute("""
+                INSERT INTO trabalhador_curso_ensino (trabalhador_id, curso_id)
+                VALUES (%s, %s)
+            """, (trabalhador_id, curso_id))
 
         conn.commit()
         flash("Trabalhador cadastrado com sucesso!", "success")
@@ -283,7 +316,7 @@ def inserir():
 def editar(trabalhador_id):
     """
     Renderiza a página de edição de um trabalhador específico.
-    Busca os dados do trabalhador, setores e vínculos existentes.
+    Busca os dados do trabalhador, setores, vínculos existentes, cursos associados e mapeamento de função para setor.
     """
     conn = conectar()
     cursor = conn.cursor()
@@ -307,21 +340,39 @@ def editar(trabalhador_id):
     """, (trabalhador_id,))
     vinculos = cursor.fetchall()
 
+    cursor.execute("SELECT id, nome FROM cursos_ensino ORDER BY nome")
+    cursos_disponiveis = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT tce.curso_id
+        FROM trabalhador_curso_ensino tce
+        WHERE tce.trabalhador_id = %s
+    """, (trabalhador_id,))
+    cursos_selecionados_ids = [row[0] for row in cursor.fetchall()]
+
+    # Mapeamento de funcao_id para setor_id
+    cursor.execute("SELECT id, setor_id FROM funcao")
+    funcao_setor_map = {row[0]: row[1] for row in cursor.fetchall()}
+
     conn.close()
-    return render_template("editar.html", trabalhador=trabalhador, setores=setores, vinculos=vinculos)
+    return render_template("editar.html", trabalhador=trabalhador, setores=setores, vinculos=vinculos,
+                           cursos_disponiveis=cursos_disponiveis,
+                           cursos_selecionados_ids=cursos_selecionados_ids,
+                           id_setor_ensino=ID_SETOR_ENSINO,
+                           funcao_setor_map=funcao_setor_map)
 
 
 @app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
 @login_required
 def atualizar(trabalhador_id):
     """
-    Atualiza os dados de um trabalhador existente, seu endereço e seus vínculos.
+    Atualiza os dados de um trabalhador existente, seu endereço, vínculos e cursos de ensino.
     """
     conn = conectar()
     cursor = conn.cursor()
 
     nome = request.form.get("nome")
-    cpf = request.form.get("cpf").replace('.', '').replace('-', '') # Remove máscara
+    cpf = request.form.get("cpf").replace('.', '').replace('-', '')
     if not validar_cpf(cpf):
         conn.close()
         flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
@@ -330,7 +381,6 @@ def atualizar(trabalhador_id):
     celular = request.form.get("celular")
     profissao = request.form.get("profissao")
     nascimento = request.form.get("nascimento")
-
     email = request.form.get("email")
     password = request.form.get("password")
 
@@ -339,8 +389,10 @@ def atualizar(trabalhador_id):
     turnos = request.form.getlist("turnos[]")
     dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
 
+    cursos_selecionados = request.form.getlist("cursos_ensino[]")
+
+
     try:
-        # Apenas atualiza o hash da senha se uma nova senha for fornecida
         if password:
             hashed_password = generate_password_hash(password)
             cursor.execute("""
@@ -355,7 +407,6 @@ def atualizar(trabalhador_id):
                 WHERE id=%s
             """, (nome, cpf, celular, profissao, nascimento, email, trabalhador_id))
 
-
         cep = request.form.get("cep")
         rua = request.form.get("rua")
         numero = request.form.get("numero")
@@ -364,16 +415,12 @@ def atualizar(trabalhador_id):
         estado = request.form.get("estado")
         complemento = request.form.get("complemento")
 
-        # Atualizar endereço
         cursor.execute("""
             UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s, complemento=%s
             WHERE trabalhador_id=%s
         """, (cep, rua, numero, bairro, cidade, estado, complemento, trabalhador_id))
 
-        # Apagar vínculos antigos
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
-
-        # Inserir novos vínculos
         for i in range(len(setores)):
             setor_id = setores[i]
             funcao_id = funcoes[i]
@@ -384,6 +431,15 @@ def atualizar(trabalhador_id):
                 INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
                 VALUES (%s, %s, %s, %s, %s)
             """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
+        
+        # Excluir e reinserir cursos de ensino para o trabalhador
+        cursor.execute("DELETE FROM trabalhador_curso_ensino WHERE trabalhador_id = %s", (trabalhador_id,))
+        for curso_id in cursos_selecionados:
+            cursor.execute("""
+                INSERT INTO trabalhador_curso_ensino (trabalhador_id, curso_id)
+                VALUES (%s, %s)
+            """, (trabalhador_id, curso_id))
+
 
         conn.commit()
         flash("Dados do trabalhador atualizados com sucesso!", "success")
@@ -404,6 +460,9 @@ def deletar_trabalhador(trabalhador_id):
     conn = conectar()
     cursor = conn.cursor()
     try:
+        # NOVO: Remover vínculos de cursos de ensino
+        cursor.execute("DELETE FROM trabalhador_curso_ensino WHERE trabalhador_id = %s", (trabalhador_id,))
+        
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id = %s", (trabalhador_id,))
         cursor.execute("DELETE FROM endereco WHERE trabalhador_id = %s", (trabalhador_id,))
         cursor.execute("DELETE FROM trabalhador WHERE id = %s", (trabalhador_id,))
@@ -451,6 +510,15 @@ def api_relatorios():
 
     lista = []
     for row in dados:
+        # NOVO: Buscar cursos para cada trabalhador no relatório
+        cursor.execute("""
+            SELECT ce.nome
+            FROM trabalhador_curso_ensino tce
+            JOIN cursos_ensino ce ON tce.curso_id = ce.id
+            WHERE tce.trabalhador_id = %s
+        """, (row[0],))
+        cursos_trabalhador = [c[0] for c in cursor.fetchall()]
+
         lista.append({
             "id": row[0],
             "nome": row[1],
@@ -469,7 +537,8 @@ def api_relatorios():
             "funcao": row[14],
             "turno": row[15],
             "dias_da_semana": row[16],
-            "email": row[17]
+            "email": row[17],
+            "cursos_ensino": cursos_trabalhador # NOVO: Adiciona os cursos
         })
 
     conn.close()
@@ -583,6 +652,16 @@ def deletar_setor(setor_id):
             WHERE setor_id = %s
         """, (setor_id,))
 
+        # NOVO: Remover vínculos de cursos de ensino para trabalhadores que tinham funções neste setor
+        cursor.execute("""
+            DELETE FROM trabalhador_curso_ensino
+            WHERE trabalhador_id IN (
+                SELECT t.id FROM trabalhador t
+                JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
+                WHERE tsf.setor_id = %s
+            )
+        """, (setor_id,))
+
         # Depois, remover funções associadas a este setor
         cursor.execute("DELETE FROM funcao WHERE setor_id = %s", (setor_id,))
 
@@ -670,6 +749,16 @@ def deletar_funcao(funcao_id):
         # Remover vínculos de trabalhador com esta função
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE funcao_id = %s", (funcao_id,))
 
+        # NOVO: Remover vínculos de cursos de ensino para trabalhadores que tinham esta função
+        cursor.execute("""
+            DELETE FROM trabalhador_curso_ensino
+            WHERE trabalhador_id IN (
+                SELECT t.id FROM trabalhador t
+                JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
+                WHERE tsf.funcao_id = %s
+            )
+        """, (funcao_id,))
+        
         # Remover a função
         cursor.execute("DELETE FROM funcao WHERE id = %s", (funcao_id,))
         conn.commit()

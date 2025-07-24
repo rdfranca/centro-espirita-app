@@ -7,7 +7,12 @@
     <form action="/atualizar/{{ trabalhador[0] }}" method="POST">
         {{ render_personal_data_fields(trabalhador) }}
         {{ render_address_fields(trabalhador) }}
-        {{ render_vinculos_section(setores, vinculos) }}
+        {# Passa os novos parâmetros para a macro #}
+        {{ render_vinculos_section(setores,
+                                   vinculos,
+                                   cursos_disponiveis=cursos_disponiveis,
+                                   cursos_selecionados_ids=cursos_selecionados_ids,
+                                   id_setor_ensino=id_setor_ensino) }}
 
         <div class="d-flex justify-content-between mt-4">
             <a href="/painel" class="btn btn-secondary">Cancelar</a>
@@ -17,244 +22,249 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Inicializa os elementos de vínculo existentes
-    // Passa os dados de setores para a função comum
-    document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(vinculo, {{ setores | tojson }}));
+    document.addEventListener('DOMContentLoaded', () => {
+        const cpfInput = document.getElementById('cpf');
+        const cpfErro = document.getElementById('cpfErro');
+        const form = document.querySelector("form");
+        const cepInput = document.getElementById("cep");
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const togglePasswordButton = document.getElementById('togglePassword');
+        const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
+        const generatePasswordButton = document.getElementById('generatePassword');
+        const passwordMatchError = document.getElementById('passwordMatchError');
 
-    const cpfInput = document.getElementById('cpf');
-    const cpfErro = document.getElementById('cpfErro');
-    const form = document.querySelector("form");
-    const cepInput = document.getElementById("cep");
-    const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirmPassword');
-    const togglePasswordButton = document.getElementById('togglePassword');
-    const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
-    const generatePasswordButton = document.getElementById('generatePassword');
-    const passwordMatchError = document.getElementById('passwordMatchError');
+        // Aplica máscaras
+        if (cpfInput) aplicarMascaraCPF(cpfInput);
+        if (cepInput) aplicarMascaraCEP(cepInput);
 
+        // NOVO: Chama a função global para configurar a visibilidade dos cursos
+        // Passa o ID do SETOR Ensino e o mapeamento funcao_id -> setor_id
+        setupCursosEnsinoVisibility(
+            'vinculos',
+            'cursos-ensino-container',
+            {{ id_setor_ensino }},
+            {{ funcao_setor_map | tojson }}
+        );
 
-    // Aplica máscaras
-    if (cpfInput) aplicarMascaraCPF(cpfInput);
-    if (cepInput) aplicarMascaraCEP(cepInput);
+        // Inicializa os vínculos existentes (importante para que o listener de mudança de função seja aplicado)
+        document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(vinculo, {{ setores | tojson }}));
 
-
-    // Validação do CPF ao perder o foco
-    if (cpfInput && cpfErro) {
-        cpfInput.addEventListener('blur', function () {
-            const cpf = this.value;
-            if (cpf.length > 0 && !validarCPF(cpf)) {
-                cpfErro.style.display = 'block';
-                this.classList.add('is-invalid');
-            } else {
-                cpfErro.style.display = 'none';
-                this.classList.remove('is-invalid');
-            }
-        });
-    }
-
-    // Validação de envio do formulário para CPF e senha
-    if (form) {
-        form.addEventListener("submit", function (e) {
-            if (cpfInput && cpfErro) {
-                const cpf = cpfInput.value;
-                if (!validarCPF(cpf)) {
-                    e.preventDefault();
-                    cpfErro.style.display = "block";
-                    cpfInput.classList.add('is-invalid');
-                    cpfInput.focus();
+        // Validação do CPF ao perder o foco
+        if (cpfInput && cpfErro) {
+            cpfInput.addEventListener('blur', function () {
+                const cpf = this.value;
+                if (cpf.length > 0 && !validarCPF(cpf)) {
+                    cpfErro.style.display = 'block';
+                    this.classList.add('is-invalid');
                 } else {
                     cpfErro.style.display = 'none';
-                    cpfInput.classList.remove('is-invalid');
+                    this.classList.remove('is-invalid');
                 }
-            }
+            });
+        }
 
-            if (passwordInput && confirmPasswordInput && passwordMatchError) {
-                if (passwordInput.value !== confirmPasswordInput.value) {
-                    e.preventDefault();
-                    passwordMatchError.style.display = 'block';
-                    confirmPasswordInput.classList.add('is-invalid');
-                    confirmPasswordInput.focus();
-                } else {
-                    passwordMatchError.style.display = 'none';
-                    confirmPasswordInput.classList.remove('is-invalid');
+        // Validação de envio do formulário para CPF e senha
+        if (form) {
+            form.addEventListener("submit", function (e) {
+                if (cpfInput && cpfErro) {
+                    const cpf = cpfInput.value;
+                    if (!validarCPF(cpf)) {
+                        e.preventDefault();
+                        cpfErro.style.display = "block";
+                        cpfInput.classList.add('is-invalid');
+                        cpfInput.focus();
+                    } else {
+                        cpfErro.style.display = 'none';
+                        cpfInput.classList.remove('is-invalid');
+                    }
                 }
-            }
-        });
-    }
+
+                if (passwordInput && confirmPasswordInput && passwordMatchError) {
+                    if (passwordInput.value !== confirmPasswordInput.value) {
+                        e.preventDefault();
+                        passwordMatchError.style.display = 'block';
+                        confirmPasswordInput.classList.add('is-invalid');
+                        confirmPasswordInput.focus();
+                    } else {
+                        passwordMatchError.style.display = 'none';
+                        confirmPasswordInput.classList.remove('is-invalid');
+                    }
+                }
+            });
+        }
+
+        // Preenchimento de CEP
+        if (cepInput) {
+            cepInput.addEventListener('blur', function () {
+                const cep = this.value.replace(/\D/g, '');
+                if (cep.length === 8) {
+                    const ruaInput = document.querySelector('input[name="rua"]');
+                    const numeroInput = document.querySelector('input[name="numero"]');
+                    const complementoInput = document.querySelector('input[name="complemento"]');
+                    const bairroInput = document.querySelector('input[name="bairro"]');
+                    const cidadeInput = document.querySelector('input[name="cidade"]');
+                    const estadoInput = document.querySelector('input[name="estado"]');
+
+                    ruaInput.value = 'Carregando...';
+                    numeroInput.value = '';
+                    complementoInput.value = '';
+                    bairroInput.value = 'Carregando...';
+                    cidadeInput.value = 'Carregando...';
+                    estadoInput.value = 'Carregando...';
+
+                    ruaInput.disabled = true;
+                    numeroInput.disabled = true;
+                    complementoInput.disabled = true;
+                    bairroInput.disabled = true;
+                    cidadeInput.disabled = true;
+                    estadoInput.disabled = true;
 
 
-    // Preenchimento de CEP
-    if (cepInput) {
-        cepInput.addEventListener('blur', function () {
-            const cep = this.value.replace(/\D/g, '');
-            if (cep.length === 8) {
-                const ruaInput = document.querySelector('input[name="rua"]');
-                const numeroInput = document.querySelector('input[name="numero"]');
-                const complementoInput = document.querySelector('input[name="complemento"]');
-                const bairroInput = document.querySelector('input[name="bairro"]');
-                const cidadeInput = document.querySelector('input[name="cidade"]');
-                const estadoInput = document.querySelector('input[name="estado"]');
-
-                ruaInput.value = 'Carregando...';
-                numeroInput.value = '';
-                complementoInput.value = '';
-                bairroInput.value = 'Carregando...';
-                cidadeInput.value = 'Carregando...';
-                estadoInput.value = 'Carregando...';
-
-                ruaInput.disabled = true;
-                numeroInput.disabled = true;
-                complementoInput.disabled = true;
-                bairroInput.disabled = true;
-                cidadeInput.disabled = true;
-                estadoInput.disabled = true;
-
-
-                fetch(`https://viacep.com.br/ws/${cep}/json/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.erro) {
-                            ruaInput.value = data.logradouro || '';
-                            bairroInput.value = data.bairro || '';
-                            cidadeInput.value = data.localidade || '';
-                            estadoInput.value = data.uf || '';
-                        } else {
+                    fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (!data.erro) {
+                                ruaInput.value = data.logradouro || '';
+                                bairroInput.value = data.bairro || '';
+                                cidadeInput.value = data.localidade || '';
+                                estadoInput.value = data.uf || '';
+                            } else {
+                                ruaInput.value = '';
+                                numeroInput.value = '';
+                                complementoInput.value = '';
+                                bairroInput.value = '';
+                                cidadeInput.value = '';
+                                estadoInput.value = '';
+                                alert("CEP não encontrado.");
+                            }
+                        })
+                        .catch(error => {
                             ruaInput.value = '';
                             numeroInput.value = '';
                             complementoInput.value = '';
                             bairroInput.value = '';
                             cidadeInput.value = '';
                             estadoInput.value = '';
-                            alert("CEP não encontrado.");
-                        }
-                    })
-                    .catch(error => {
-                        ruaInput.value = '';
-                        numeroInput.value = '';
-                        complementoInput.value = '';
-                        bairroInput.value = '';
-                        cidadeInput.value = '';
-                        estadoInput.value = '';
-                        console.error("Erro ao buscar o CEP:", error);
-                        alert("Erro ao buscar o CEP.");
-                    })
-                    .finally(() => {
-                        ruaInput.disabled = false;
-                        numeroInput.disabled = false;
-                        complementoInput.disabled = false;
-                        bairroInput.disabled = false;
-                        cidadeInput.disabled = false;
-                        estadoInput.disabled = false;
-                    });
-            } else {
-                document.querySelector('input[name="rua"]').value = '';
-                document.querySelector('input[name="numero"]').value = '';
-                document.querySelector('input[name="complemento"]').value = '';
-                document.querySelector('input[name="bairro"]').value = '';
-                document.querySelector('input[name="cidade"]').value = '';
-                document.querySelector('input[name="estado"]').value = '';
-            }
-        });
-    }
+                            console.error("Erro ao buscar o CEP:", error);
+                            alert("Erro ao buscar o CEP.");
+                        })
+                        .finally(() => {
+                            ruaInput.disabled = false;
+                            numeroInput.disabled = false;
+                            complementoInput.disabled = false;
+                            bairroInput.disabled = false;
+                            cidadeInput.disabled = false;
+                            estadoInput.disabled = false;
+                        });
+                } else {
+                    document.querySelector('input[name="rua"]').value = '';
+                    document.querySelector('input[name="numero"]').value = '';
+                    document.querySelector('input[name="complemento"]').value = '';
+                    document.querySelector('input[name="bairro"]').value = '';
+                    document.querySelector('input[name="cidade"]').value = '';
+                    document.querySelector('input[name="estado"]').value = '';
+                }
+            });
+        }
 
-    // Alternar visibilidade da senha
-    if (togglePasswordButton && passwordInput) {
-        togglePasswordButton.innerHTML = '👁️';
-        togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
-    }
-    if (toggleConfirmPasswordButton && confirmPasswordInput) {
-        toggleConfirmPasswordButton.innerHTML = '👁️';
-        toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
-    }
+        // Alternar visibilidade da senha
+        if (togglePasswordButton && passwordInput) {
+            togglePasswordButton.innerHTML = '👁️';
+            togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
+        }
+        if (toggleConfirmPasswordButton && confirmPasswordInput) {
+            toggleConfirmPasswordButton.innerHTML = '👁️';
+            toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
+        }
 
-    // Gerar senha forte
-    if (generatePasswordButton && passwordInput && confirmPasswordInput) {
-        generatePasswordButton.addEventListener('click', function () {
-            const newPassword = generateStrongPassword(12);
-            passwordInput.value = newPassword;
-            confirmPasswordInput.value = newPassword;
-            passwordInput.type = 'text';
-            confirmPasswordInput.type = 'text';
-            if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
-            if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
-            if (passwordMatchError) passwordMatchError.style.display = 'none';
-        });
+        // Gerar senha forte
+        if (generatePasswordButton && passwordInput && confirmPasswordInput) {
+            generatePasswordButton.addEventListener('click', function () {
+                const newPassword = generateStrongPassword(12);
+                passwordInput.value = newPassword;
+                confirmPasswordInput.value = newPassword;
+                passwordInput.type = 'text';
+                confirmPasswordInput.type = 'text';
+                if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
+                if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
+                if (passwordMatchError) passwordMatchError.style.display = 'none';
+            });
+        }
+
+        // Validação de senhas coincidentes ao perder o foco
+        if (passwordInput && confirmPasswordInput && passwordMatchError) {
+            confirmPasswordInput.addEventListener('blur', function () {
+                if (passwordInput.value !== this.value) {
+                    passwordMatchError.style.display = 'block';
+                    confirmPasswordInput.classList.add('is-invalid');
+                } else {
+                    passwordMatchError.style.display = 'none';
+                    confirmPasswordInput.classList.remove('is-invalid');
+                }
+            });
+            passwordInput.addEventListener('blur', function() {
+                if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
+                    passwordMatchError.style.display = 'block';
+                    confirmPasswordInput.classList.add('is-invalid');
+                } else {
+                    passwordMatchError.style.display = 'none';
+                    confirmPasswordInput.classList.remove('is-invalid');
+                }
+            });
+        }
+    });
+
+    // Função adicionarVinculo (precisa ser global)
+    function adicionarVinculo() {
+        const container = document.getElementById("vinculos");
+        const div = document.createElement('div');
+        div.className = 'row g-3 align-items-end mb-3 vinculo';
+
+        div.innerHTML = `
+            <div class="col">
+                <label for="setores[]" class="form-label">Setor:</label>
+                <select name="setores[]" class="form-select setor">
+                    <option disabled selected>Selecione o setor</option>
+                    {% for id, nome in setores %}
+                        <option value="{{ id }}">{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col">
+                <label for="funcoes[]" class="form-label">Função:</label>
+                <select name="funcoes[]" class="form-select funcao">
+                    <option disabled selected>Selecione o setor primeiro</option>
+                </select>
+            </div>
+            <div class="col">
+                <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+                <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                    <option value="Segunda-feira">Segunda-feira</option>
+                    <option value="Terça-feira">Terça-feira</option>
+                    <option value="Quarta-feira">Quarta-feira</option>
+                    <option value="Quinta-feira">Quinta-feira</option>
+                    <option value="Sexta-feira">Sexta-feira</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
+                <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+            </div>
+            <div class="col">
+                <label for="turnos[]" class="form-label">Turno:</label>
+                <select name="turnos[]" class="form-select">
+                    <option value="Manhã">Manhã</option>
+                    <option value="Tarde">Tarde</option>
+                    <option value="Noite">Noite</option>
+                    <option value="Não se aplica">Não se aplica</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
+            </div>
+        `;
+        container.appendChild(div);
+        aplicarEventosVinculo(div, {{ setores | tojson }}); // Chame a versão modificada do aplicarEventosVinculo
     }
-
-    // Validação de senhas coincidentes ao perder o foco
-    if (passwordInput && confirmPasswordInput && passwordMatchError) {
-        confirmPasswordInput.addEventListener('blur', function () {
-            if (passwordInput.value !== this.value) {
-                passwordMatchError.style.display = 'block';
-                confirmPasswordInput.classList.add('is-invalid');
-            } else {
-                passwordMatchError.style.display = 'none';
-                confirmPasswordInput.classList.remove('is-invalid');
-            }
-        });
-        passwordInput.addEventListener('blur', function() {
-            if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
-                passwordMatchError.style.display = 'block';
-                confirmPasswordInput.classList.add('is-invalid');
-            } else {
-                passwordMatchError.style.display = 'none';
-                confirmPasswordInput.classList.remove('is-invalid');
-            }
-        });
-    }
-});
-
-// Esta função precisa ser global para ser chamada pelo botão "Adicionar outro Setor"
-function adicionarVinculo() {
-    const container = document.getElementById("vinculos");
-    const div = document.createElement('div');
-    div.className = 'row g-3 align-items-end mb-3 vinculo';
-
-    div.innerHTML = `
-        <div class="col">
-            <label for="setores[]" class="form-label">Setor:</label>
-            <select name="setores[]" class="form-select setor">
-                <option disabled selected>Selecione o setor</option>
-                {% for id, nome in setores %}
-                    <option value="{{ id }}">{{ nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col">
-            <label for="funcoes[]" class="form-label">Função:</label>
-            <select name="funcoes[]" class="form-select funcao">
-                <option disabled selected>Selecione o setor primeiro</option>
-            </select>
-        </div>
-        <div class="col">
-            <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
-            <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
-                <option value="Segunda-feira">Segunda-feira</option>
-                <option value="Terça-feira">Terça-feira</option>
-                <option value="Quarta-feira">Quarta-feira</option>
-                <option value="Quinta-feira">Quinta-feira</option>
-                <option value="Sexta-feira">Sexta-feira</option>
-                <option value="Sábado">Sábado</option>
-                <option value="Domingo">Domingo</option>
-            </select>
-            <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
-        </div>
-        <div class="col">
-            <label for="turnos[]" class="form-label">Turno:</label>
-            <select name="turnos[]" class="form-select">
-                <option value="Manhã">Manhã</option>
-                <option value="Tarde">Tarde</option>
-                <option value="Noite">Noite</option>
-                <option value="Não se aplica">Não se aplica</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
-        </div>
-    `;
-    container.appendChild(div);
-    aplicarEventosVinculo(div, {{ setores | tojson }}); // Passa os dados de setores
-}
 </script>
 {% endblock %}

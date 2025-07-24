@@ -8,7 +8,10 @@
     <form action="/inserir" method="POST">
         {{ render_personal_data_fields() }}
         {{ render_address_fields() }}
-        {{ render_vinculos_section(setores) }}
+        {# Passa os novos parâmetros para a macro #}
+        {{ render_vinculos_section(setores,
+                                   cursos_disponiveis=cursos_disponiveis,
+                                   id_setor_ensino=id_setor_ensino) }}
 
         <div class="d-flex justify-content-end mt-4">
             <button type="submit" class="btn btn-success">Salvar</button>
@@ -17,212 +20,220 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const cpfInput = document.getElementById("cpf");
-    const cepInput = document.getElementById("cep");
-    const form = document.querySelector("form");
-    const cpfErro = document.getElementById("cpfErro");
-    const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirmPassword');
-    const togglePasswordButton = document.getElementById('togglePassword');
-    const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
-    const generatePasswordButton = document.getElementById('generatePassword');
-    const passwordMatchError = document.getElementById('passwordMatchError');
+    document.addEventListener('DOMContentLoaded', function () {
+        const cpfInput = document.getElementById("cpf");
+        const cepInput = document.getElementById("cep");
+        const form = document.querySelector("form");
+        const cpfErro = document.getElementById("cpfErro");
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const togglePasswordButton = document.getElementById('togglePassword');
+        const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
+        const generatePasswordButton = document.getElementById('generatePassword');
+        const passwordMatchError = document.getElementById('passwordMatchError');
 
-    // Aplica máscaras
-    if (cpfInput) aplicarMascaraCPF(cpfInput);
-    if (cepInput) aplicarMascaraCEP(cepInput);
+        // Aplica máscaras
+        if (cpfInput) aplicarMascaraCPF(cpfInput);
+        if (cepInput) aplicarMascaraCEP(cepInput);
 
-    // Inicializa os elementos de vínculo existentes (para o primeiro bloco)
-    // Passa os dados de setores para a função comum
-    document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(vinculo, {{ setores | tojson }}));
+        // NOVO: Chama a função global para configurar a visibilidade dos cursos
+        // Passa o ID do SETOR Ensino e o mapeamento funcao_id -> setor_id
+        setupCursosEnsinoVisibility(
+            'vinculos',
+            'cursos-ensino-container',
+            {{ id_setor_ensino }},         // ID do SETOR Ensino
+            {{ funcao_setor_map | tojson }} // Mapeamento
+        );
 
-    // Validação de envio do formulário
-    if (form) {
-        form.addEventListener("submit", function (e) {
-            if (cpfInput && cpfErro) {
-                const cpf = cpfInput.value.replace(/\D/g, '');
-                if (!validarCPF(cpf)) {
-                    e.preventDefault();
-                    cpfErro.style.display = "block";
-                    cpfInput.classList.add('is-invalid');
-                    cpfInput.focus();
-                } else {
-                    cpfErro.style.display = "none";
-                    cpfInput.classList.remove('is-invalid');
+        // Inicializa os vínculos existentes (importante para que o listener de mudança de função seja aplicado)
+        document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(vinculo, {{ setores | tojson }}));
+
+        // Validação de envio do formulário
+        if (form) {
+            form.addEventListener("submit", function (e) {
+                if (cpfInput && cpfErro) {
+                    const cpf = cpfInput.value.replace(/\D/g, '');
+                    if (!validarCPF(cpf)) {
+                        e.preventDefault();
+                        cpfErro.style.display = "block";
+                        cpfInput.classList.add('is-invalid');
+                        cpfInput.focus();
+                    } else {
+                        cpfErro.style.display = "none";
+                        cpfInput.classList.remove('is-invalid');
+                    }
                 }
-            }
 
-            if (passwordInput && confirmPasswordInput && passwordMatchError) {
-                if (passwordInput.value !== confirmPasswordInput.value) {
-                    e.preventDefault();
+                if (passwordInput && confirmPasswordInput && passwordMatchError) {
+                    if (passwordInput.value !== confirmPasswordInput.value) {
+                        e.preventDefault();
+                        passwordMatchError.style.display = 'block';
+                        confirmPasswordInput.classList.add('is-invalid');
+                        confirmPasswordInput.focus();
+                    } else {
+                        passwordMatchError.style.display = 'none';
+                        confirmPasswordInput.classList.remove('is-invalid');
+                    }
+                }
+            });
+        }
+
+        // Validação de CPF ao perder o foco (blur)
+        if (cpfInput && cpfErro) {
+            cpfInput.addEventListener('blur', function () {
+                const cpf = this.value.replace(/\D/g, '');
+                if (cpf.length > 0 && !validarCPF(cpf)) {
+                    cpfErro.style.display = 'block';
+                    this.classList.add('is-invalid');
+                } else {
+                    cpfErro.style.display = 'none';
+                    this.classList.remove('is-invalid');
+                }
+            });
+        }
+
+        // Preenchimento de CEP
+        if (cepInput) {
+            cepInput.addEventListener("blur", function () {
+                const cep = this.value.replace(/\D/g, '');
+                if (cep.length !== 8) {
+                    document.querySelector('input[name="rua"]').value = '';
+                    document.querySelector('input[name="numero"]').value = '';
+                    document.querySelector('input[name="complemento"]').value = '';
+                    document.querySelector('input[name="bairro"]').value = '';
+                    document.querySelector('input[name="cidade"]').value = '';
+                    document.querySelector('input[name="estado"]').value = '';
+                    return;
+                }
+
+                const rua = document.querySelector('input[name="rua"]');
+                const numero = document.querySelector('input[name="numero"]');
+                const complemento = document.querySelector('input[name="complemento"]');
+                const bairro = document.querySelector('input[name="bairro"]');
+                const cidade = document.querySelector('input[name="cidade"]');
+                const estado = document.querySelector('input[name="estado"]');
+
+                rua.value = bairro.value = cidade.value = estado.value = "Carregando...";
+                rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = true;
+
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.erro) {
+                            rua.value = numero.value = complemento.value = bairro.value = cidade.value = estado.value = "";
+                        } else {
+                            rua.value = data.logradouro;
+                            bairro.value = data.bairro;
+                            cidade.value = data.localidade;
+                            estado.value = data.uf;
+                        }
+                    })
+                    .catch(() => {
+                        // Tratar erro na busca do CEP
+                    })
+                    .finally(() => {
+                        rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
+                    });
+            });
+        }
+
+        // Alternar visibilidade da senha
+        if (togglePasswordButton && passwordInput) {
+            togglePasswordButton.innerHTML = '👁️'; // Define o ícone inicial
+            togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
+        }
+        if (toggleConfirmPasswordButton && confirmPasswordInput) {
+            toggleConfirmPasswordButton.innerHTML = '👁️'; // Define o ícone inicial
+            toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
+        }
+
+        // Gerar senha forte
+        if (generatePasswordButton && passwordInput && confirmPasswordInput) {
+            generatePasswordButton.addEventListener('click', function () {
+                const newPassword = generateStrongPassword(12);
+                passwordInput.value = newPassword;
+                confirmPasswordInput.value = newPassword;
+                passwordInput.type = 'text';
+                confirmPasswordInput.type = 'text';
+                if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
+                if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
+                if (passwordMatchError) passwordMatchError.style.display = 'none';
+            });
+        }
+
+        // Validação de senhas coincidentes ao perder o foco
+        if (passwordInput && confirmPasswordInput && passwordMatchError) {
+            confirmPasswordInput.addEventListener('blur', function () {
+                if (passwordInput.value !== this.value) {
                     passwordMatchError.style.display = 'block';
                     confirmPasswordInput.classList.add('is-invalid');
-                    confirmPasswordInput.focus();
                 } else {
                     passwordMatchError.style.display = 'none';
                     confirmPasswordInput.classList.remove('is-invalid');
                 }
-            }
-        });
+            });
+            passwordInput.addEventListener('blur', function() {
+                if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
+                    passwordMatchError.style.display = 'block';
+                    confirmPasswordInput.classList.add('is-invalid');
+                } else {
+                    passwordMatchError.style.display = 'none';
+                    confirmPasswordInput.classList.remove('is-invalid');
+                }
+            });
+        }
+    });
+
+    // Função adicionarVinculo (precisa ser global para ser chamada pelo botão)
+    function adicionarVinculo() {
+        const container = document.getElementById("vinculos");
+        const div = document.createElement('div');
+        div.className = 'row g-3 align-items-end mb-3 vinculo';
+
+        div.innerHTML = `
+            <div class="col">
+                <label for="setores[]" class="form-label">Setor:</label>
+                <select name="setores[]" class="form-select setor">
+                    <option disabled selected>Selecione o setor</option>
+                    {% for id, nome in setores %}
+                        <option value="{{ id }}">{{ nome }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col">
+                <label for="funcoes[]" class="form-label">Função:</label>
+                <select name="funcoes[]" class="form-select funcao">
+                    <option disabled selected>Selecione o setor primeiro</option>
+                </select>
+            </div>
+            <div class="col">
+                <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
+                <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
+                    <option value="Segunda-feira">Segunda-feira</option>
+                    <option value="Terça-feira">Terça-feira</option>
+                    <option value="Quarta-feira">Quarta-feira</option>
+                    <option value="Quinta-feira">Quinta-feira</option>
+                    <option value="Sexta-feira">Sexta-feira</option>
+                    <option value="Sábado">Sábado</option>
+                    <option value="Domingo">Domingo</option>
+                </select>
+                <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
+            </div>
+            <div class="col">
+                <label for="turnos[]" class="form-label">Turno:</label>
+                <select name="turnos[]" class="form-select">
+                    <option value="Manhã">Manhã</option>
+                    <option value="Tarde">Tarde</option>
+                    <option value="Noite">Noite</option>
+                    <option value="Não se aplica">Não se aplica</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
+            </div>
+        `;
+        container.appendChild(div);
+        aplicarEventosVinculo(div, {{ setores | tojson }}); // Chame a versão modificada do aplicarEventosVinculo
     }
-
-    // Validação de CPF ao perder o foco (blur)
-    if (cpfInput && cpfErro) {
-        cpfInput.addEventListener('blur', function () {
-            const cpf = this.value.replace(/\D/g, '');
-            if (cpf.length > 0 && !validarCPF(cpf)) {
-                cpfErro.style.display = 'block';
-                this.classList.add('is-invalid');
-            } else {
-                cpfErro.style.display = 'none';
-                this.classList.remove('is-invalid');
-            }
-        });
-    }
-
-    // Preenchimento de CEP
-    if (cepInput) {
-        cepInput.addEventListener("blur", function () {
-            const cep = this.value.replace(/\D/g, '');
-            if (cep.length !== 8) {
-                document.querySelector('input[name="rua"]').value = '';
-                document.querySelector('input[name="numero"]').value = '';
-                document.querySelector('input[name="complemento"]').value = '';
-                document.querySelector('input[name="bairro"]').value = '';
-                document.querySelector('input[name="cidade"]').value = '';
-                document.querySelector('input[name="estado"]').value = '';
-                return;
-            }
-
-            const rua = document.querySelector('input[name="rua"]');
-            const numero = document.querySelector('input[name="numero"]');
-            const complemento = document.querySelector('input[name="complemento"]');
-            const bairro = document.querySelector('input[name="bairro"]');
-            const cidade = document.querySelector('input[name="cidade"]');
-            const estado = document.querySelector('input[name="estado"]');
-
-            rua.value = bairro.value = cidade.value = estado.value = "Carregando...";
-            rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = true;
-
-            fetch(`https://viacep.com.br/ws/${cep}/json/`)
-                .then(res => res.json())
-                .then(data => {
-                    if (data.erro) {
-                        rua.value = numero.value = complemento.value = bairro.value = cidade.value = estado.value = "";
-                    } else {
-                        rua.value = data.logradouro;
-                        bairro.value = data.bairro;
-                        cidade.value = data.localidade;
-                        estado.value = data.uf;
-                    }
-                })
-                .catch(() => {
-                    // Tratar erro na busca do CEP
-                })
-                .finally(() => {
-                    rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
-                });
-        });
-    }
-
-    // Alternar visibilidade da senha
-    if (togglePasswordButton && passwordInput) {
-        togglePasswordButton.innerHTML = '👁️'; // Define o ícone inicial
-        togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
-    }
-    if (toggleConfirmPasswordButton && confirmPasswordInput) {
-        toggleConfirmPasswordButton.innerHTML = '👁️'; // Define o ícone inicial
-        toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
-    }
-
-    // Gerar senha forte
-    if (generatePasswordButton && passwordInput && confirmPasswordInput) {
-        generatePasswordButton.addEventListener('click', function () {
-            const newPassword = generateStrongPassword(12);
-            passwordInput.value = newPassword;
-            confirmPasswordInput.value = newPassword;
-            passwordInput.type = 'text';
-            confirmPasswordInput.type = 'text';
-            if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
-            if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
-            if (passwordMatchError) passwordMatchError.style.display = 'none';
-        });
-    }
-
-    // Validação de senhas coincidentes ao perder o foco
-    if (passwordInput && confirmPasswordInput && passwordMatchError) {
-        confirmPasswordInput.addEventListener('blur', function () {
-            if (passwordInput.value !== this.value) {
-                passwordMatchError.style.display = 'block';
-                confirmPasswordInput.classList.add('is-invalid');
-            } else {
-                passwordMatchError.style.display = 'none';
-                confirmPasswordInput.classList.remove('is-invalid');
-            }
-        });
-        passwordInput.addEventListener('blur', function() {
-            if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
-                passwordMatchError.style.display = 'block';
-                confirmPasswordInput.classList.add('is-invalid');
-            } else {
-                passwordMatchError.style.display = 'none';
-                confirmPasswordInput.classList.remove('is-invalid');
-            }
-        });
-    }
-});
-
-// Esta função precisa ser global para ser chamada pelo botão "Adicionar outro Setor"
-function adicionarVinculo() {
-    const container = document.getElementById("vinculos");
-    const div = document.createElement('div');
-    div.className = 'row g-3 align-items-end mb-3 vinculo';
-
-    div.innerHTML = `
-        <div class="col">
-            <label for="setores[]" class="form-label">Setor:</label>
-            <select name="setores[]" class="form-select setor">
-                <option disabled selected>Selecione o setor</option>
-                {% for id, nome in setores %}
-                    <option value="{{ id }}">{{ nome }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col">
-            <label for="funcoes[]" class="form-label">Função:</label>
-            <select name="funcoes[]" class="form-select funcao">
-                <option disabled selected>Selecione o setor primeiro</option>
-            </select>
-        </div>
-        <div class="col">
-            <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
-            <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
-                <option value="Segunda-feira">Segunda-feira</option>
-                <option value="Terça-feira">Terça-feira</option>
-                <option value="Quarta-feira">Quarta-feira</option>
-                <option value="Quinta-feira">Quinta-feira</option>
-                <option value="Sexta-feira">Sexta-feira</option>
-                <option value="Sábado">Sábado</option>
-                <option value="Domingo">Domingo</option>
-            </select>
-            <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
-        </div>
-        <div class="col">
-            <label for="turnos[]" class="form-label">Turno:</label>
-            <select name="turnos[]" class="form-select">
-                <option value="Manhã">Manhã</option>
-                <option value="Tarde">Tarde</option>
-                <option value="Noite">Noite</option>
-                <option value="Não se aplica">Não se aplica</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <button type="button" class="btn btn-danger btn-sm remover-vinculo">X</button>
-        </div>
-    `;
-    container.appendChild(div);
-    aplicarEventosVinculo(div, {{ setores | tojson }}); // Passa os dados de setores
-}
 </script>
 {% endblock %}

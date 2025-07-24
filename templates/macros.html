@@ -76,7 +76,8 @@
     </div>
 {% endmacro %}
 
-{% macro render_vinculos_section(setores, vinculos=[]) %}
+{# NOVO: id_setor_ensino e funcao_setor_map adicionados como parâmetros #}
+{% macro render_vinculos_section(setores, vinculos=[], cursos_disponiveis=[], cursos_selecionados_ids=[], id_setor_ensino=None) %}
     <h4>Setores, Funções e Turnos</h4>
     <div id="vinculos">
         {% if vinculos %}
@@ -169,5 +170,22 @@
             </div>
         {% endif %}
     </div>
+
+    {# Bloco de Cursos de Ensino - Visibilidade controlada por JS #}
+    <div id="cursos-ensino-container" class="mt-3" style="display: none;"> {# Inicialmente oculto #}
+        <h4>Cursos de Ensino</h4>
+        <div class="mb-3">
+            <label for="cursos_ensino" class="form-label">Selecione os Cursos:</label>
+            <select name="cursos_ensino[]" id="cursos_ensino" class="form-select" multiple size="5">
+                {% for curso_id, curso_nome in cursos_disponiveis %}
+                    <option value="{{ curso_id }}"
+                        {% if curso_id in cursos_selecionados_ids %}selected{% endif %}>
+                        {{ curso_nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
     <button type="button" class="btn btn-secondary mt-2" onclick="adicionarVinculo()">➕ Adicionar outro Setor</button>
 {% endmacro %}
