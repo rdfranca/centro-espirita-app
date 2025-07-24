@@ -513,6 +513,7 @@ def gerenciar_estrutura():
     conn.close()
     return render_template('gerenciar_estrutura.html', setores=setores, funcoes=funcoes)
 
+# ESTA É A VERSÃO CORRETA E ÚNICA DA FUNÇÃO 'adicionar_setor'
 @app.route('/setor/adicionar', methods=['POST'])
 @login_required
 def adicionar_setor():
@@ -521,12 +522,16 @@ def adicionar_setor():
         flash("O nome do setor não pode ser vazio.", "danger")
         return redirect(url_for('gerenciar_estrutura'))
 
+    # Normaliza o nome para minúsculas e remove espaços extras
+    nome_normalizado = nome.strip().lower()
+
     conn = conectar()
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO setores (nome) VALUES (%s)", (nome,))
+        # Use nome_normalizado na inserção
+        cursor.execute("INSERT INTO setores (nome) VALUES (%s)", (nome_normalizado,))
         conn.commit()
-        flash(f"Setor '{nome}' adicionado com sucesso!", "success")
+        flash(f"Setor '{nome}' adicionado com sucesso!", "success") # Mostra o nome original na flash
     except psycopg2.errors.UniqueViolation: # Se o nome do setor for UNIQUE
         conn.rollback()
         flash(f"O setor '{nome}' já existe.", "warning")
@@ -545,10 +550,13 @@ def editar_setor(setor_id):
         flash("O nome do setor não pode ser vazio.", "danger")
         return redirect(url_for('gerenciar_estrutura'))
 
+    # Normaliza o nome para minúsculas e remove espaços extras
+    novo_nome_normalizado = novo_nome.strip().lower()
+
     conn = conectar()
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE setores SET nome = %s WHERE id = %s", (novo_nome, setor_id))
+        cursor.execute("UPDATE setores SET nome = %s WHERE id = %s", (novo_nome_normalizado, setor_id))
         conn.commit()
         if cursor.rowcount == 0:
             flash("Setor não encontrado.", "danger")
@@ -593,30 +601,31 @@ def deletar_setor(setor_id):
     finally:
         conn.close()
 
-@app.route('/setor/adicionar', methods=['POST'])
+@app.route('/funcao/adicionar', methods=['POST'])
 @login_required
-def adicionar_setor():
+def adicionar_funcao():
     nome = request.form.get('nome')
-    if not nome:
-        flash("O nome do setor não pode ser vazio.", "danger")
+    setor_id = request.form.get('setor_id')
+
+    if not nome or not setor_id:
+        flash("Nome da função e setor são obrigatórios.", "danger")
         return redirect(url_for('gerenciar_estrutura'))
 
-    # Normaliza o nome para minúsculas e remove espaços extras
-    nome_normalizado = nome.strip().lower() # .strip() remove espaços no início/fim
+    # Normaliza o nome da função
+    nome_normalizado = nome.strip().lower()
 
     conn = conectar()
     cursor = conn.cursor()
     try:
-        # Use nome_normalizado na inserção
-        cursor.execute("INSERT INTO setores (nome) VALUES (%s)", (nome_normalizado,))
+        cursor.execute("INSERT INTO funcao (nome, setor_id) VALUES (%s, %s)", (nome_normalizado, setor_id))
         conn.commit()
-        flash(f"Setor '{nome}' adicionado com sucesso!", "success") # Mostra o nome original na flash
+        flash(f"Função '{nome}' adicionada com sucesso!", "success")
     except psycopg2.errors.UniqueViolation:
         conn.rollback()
-        flash(f"O setor '{nome}' já existe.", "warning")
+        flash(f"A função '{nome}' já existe neste setor.", "warning")
     except Exception as e:
         conn.rollback()
-        flash(f"Erro ao adicionar setor: {str(e)}", "danger")
+        flash(f"Erro ao adicionar função: {str(e)}", "danger")
     finally:
         conn.close()
     return redirect(url_for('gerenciar_estrutura'))
@@ -631,10 +640,13 @@ def editar_funcao(funcao_id):
         flash("Nome da função e setor são obrigatórios.", "danger")
         return redirect(url_for('gerenciar_estrutura'))
 
+    # Normaliza o nome da função
+    novo_nome_normalizado = novo_nome.strip().lower()
+
     conn = conectar()
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE funcao SET nome = %s, setor_id = %s WHERE id = %s", (novo_nome, novo_setor_id, funcao_id))
+        cursor.execute("UPDATE funcao SET nome = %s, setor_id = %s WHERE id = %s", (novo_nome_normalizado, novo_setor_id, funcao_id))
         conn.commit()
         if cursor.rowcount == 0:
             flash("Função não encontrada.", "danger")
@@ -658,7 +670,7 @@ def deletar_funcao(funcao_id):
     try:
         # Remover vínculos de trabalhador com esta função
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE funcao_id = %s", (funcao_id,))
-        
+
         # Remover a função
         cursor.execute("DELETE FROM funcao WHERE id = %s", (funcao_id,))
         conn.commit()
