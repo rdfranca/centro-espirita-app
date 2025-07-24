@@ -2,16 +2,12 @@ from flask import Flask, render_template, request, redirect, jsonify, url_for, s
 import psycopg2
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps # Importar para o decorador
+from functools import wraps
 
 app = Flask(__name__)
 
 # --- CONFIGURAÇÃO DE SESSÃO ---
-# É ESSENCIAL para a segurança da sessão. Use uma string longa e aleatória.
-# Em produção, obtenha isso de uma variável de ambiente.
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_segura_e_aleatoria_aqui_12345")
-# Você pode gerar uma com: os.urandom(24)
-# Ex: app.secret_key = os.urandom(24)
 # --- FIM CONFIGURAÇÃO DE SESSÃO ---
 
 
@@ -115,13 +111,13 @@ def buscar():
 
         vinculos_formatados = []
         for v in vinculos:
-            setor, funcao, turno, dias_da_semana = v # Desempacota o novo campo
+            setor, funcao, turno, dias_da_semana = v
             if setor and funcao and turno:
                 vinculos_formatados.append({
                     "setor": setor,
                     "funcao": funcao,
                     "turno": turno,
-                    "dias_da_semana": dias_da_semana # Adicionado o novo campo
+                    "dias_da_semana": dias_da_semana
                 })
 
         resultados.append({
@@ -138,7 +134,7 @@ def buscar():
             "cidade": t[10],
             "estado": t[11],
             "complemento": t[12],
-            "email": t[13], # Adicionado email
+            "email": t[13],
             "vinculos": vinculos_formatados
         })
 
@@ -150,16 +146,14 @@ def buscar():
 def cadastrar():
     """
     Renderiza a página de cadastro de trabalhadores.
-    Busca todos os setores e funções para preencher os selects iniciais.
+    Busca todos os setores para preencher os selects iniciais.
     """
     conn = conectar()
     cursor = conn.cursor()
     cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
     setores = cursor.fetchall()
-    cursor.execute("SELECT id, nome, setor_id FROM funcao ORDER BY nome")
-    funcoes = cursor.fetchall()
     conn.close()
-    return render_template("cadastrar.html", setores=setores, funcoes=funcoes)
+    return render_template("cadastrar.html", setores=setores) # Passa apenas setores
 
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
 @login_required # Protege esta rota
@@ -179,21 +173,37 @@ def validar_cpf(cpf):
     Valida um número de CPF.
     Retorna True se o CPF for válido, False caso contrário.
     """
-    if not cpf.isdigit() or len(cpf) != 11:
+    # Remove caracteres não numéricos
+    cpf = ''.join(filter(str.isdigit, cpf))
+
+    if not cpf or len(cpf) != 11:
         return False
 
+    # Verifica se todos os dígitos são iguais (ex: "111.111.111-11")
     if cpf == cpf[0] * 11:
         return False
 
-    def calc_digito(cpf_parte, peso_lista):
-        soma = sum(int(dig) * p for dig, p in zip(cpf_parte, peso_lista))
-        resto = soma % 11
-        return '0' if resto < 2 else str(11 - resto)
+    # Validação do primeiro dígito verificador
+    soma = 0
+    for i in range(9):
+        soma += int(cpf[i]) * (10 - i)
+    resto = (soma * 10) % 11
+    if resto == 10 or resto == 11:
+        resto = 0
+    if resto != int(cpf[9]):
+        return False
 
-    digito1 = calc_digito(cpf[:9], range(10, 1, -1))
-    digito2 = calc_digito(cpf[:9] + digito1, range(11, 1, -1))
+    # Validação do segundo dígito verificador
+    soma = 0
+    for i in range(10):
+        soma += int(cpf[i]) * (11 - i)
+    resto = (soma * 10) % 11
+    if resto == 10 or resto == 11:
+        resto = 0
+    if resto != int(cpf[10]):
+        return False
 
-    return cpf[-2:] == digito1 + digito2
+    return True
 
 @app.route("/inserir", methods=["POST"])
 @login_required # Protege esta rota
@@ -205,11 +215,11 @@ def inserir():
     cursor = conn.cursor()
 
     nome = request.form.get("nome")
-    cpf = request.form.get("cpf")
+    cpf = request.form.get("cpf").replace('.', '').replace('-', '') # Remove máscara
     if not validar_cpf(cpf):
         conn.close()
         flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
-        return redirect(url_for('cadastrar')) # Redireciona de volta para o cadastro com erro
+        return redirect(url_for('cadastrar'))
 
     data_nascimento = request.form.get("nascimento")
     celular = request.form.get("celular")
@@ -225,16 +235,11 @@ def inserir():
     bairro = request.form.get("bairro")
     cidade = request.form.get("cidade")
     estado = request.form.get("estado")
-    complemento = request.form.get("complemento") # Novo campo
+    complemento = request.form.get("complemento")
 
     setores = request.form.getlist("setores[]")
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
-    # ATENÇÃO: Se o campo 'dias_da_semana[]' for um 'select multiple' e houver múltiplos blocos de vínculo,
-    # request.form.getlist("dias_da_semana[]") retornará uma lista PLANA de TODAS as opções selecionadas de TODOS os selects.
-    # Para que o 'zip' funcione corretamente, o frontend (JavaScript) DEVE garantir que 'dias_da_semana[]'
-    # seja uma lista de strings, onde cada string representa os dias (separados por vírgula) para UM VÍNCULO.
-    # Ex: ["Segunda-feira,Terça-feira", "Quinta-feira"]
     dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
 
 
@@ -251,17 +256,10 @@ def inserir():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento))
 
-        # Itera sobre os vínculos e insere no banco de dados
-        # O zip funcionará corretamente se as listas tiverem o mesmo comprimento
-        # e os elementos estiverem alinhados (o que o Flask faz para campos com o mesmo nome[]).
         for i in range(len(setores)):
             setor_id = setores[i]
             funcao_id = funcoes[i]
             turno = turnos[i]
-            # Tenta obter os dias da semana para este vínculo específico.
-            # Se 'dias_da_semana_por_vinculo' for uma lista plana de todas as seleções individuais,
-            # esta lógica precisaria ser mais complexa.
-            # Assumimos que 'dias_da_semana_por_vinculo' já está alinhado com os outros campos.
             dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
 
             cursor.execute("""
@@ -271,11 +269,11 @@ def inserir():
 
         conn.commit()
         flash("Trabalhador cadastrado com sucesso!", "success")
-        return redirect(url_for('painel')) # Redireciona para o painel após o cadastro
+        return redirect(url_for('painel'))
     except Exception as e:
         conn.rollback()
         flash(f"Erro ao cadastrar trabalhador: {str(e)}", "danger")
-        return redirect(url_for('cadastrar')) # Redireciona de volta para o cadastro com erro
+        return redirect(url_for('cadastrar'))
     finally:
         conn.close()
 
@@ -285,7 +283,7 @@ def inserir():
 def editar(trabalhador_id):
     """
     Renderiza a página de edição de um trabalhador específico.
-    Busca os dados do trabalhador, setores, funções e vínculos existentes.
+    Busca os dados do trabalhador, setores e vínculos existentes.
     """
     conn = conectar()
     cursor = conn.cursor()
@@ -302,9 +300,6 @@ def editar(trabalhador_id):
     cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
     setores = cursor.fetchall()
 
-    cursor.execute("SELECT id, nome, setor_id FROM funcao ORDER BY nome")
-    funcoes = cursor.fetchall()
-
     cursor.execute("""
         SELECT tsf.setor_id, tsf.funcao_id, tsf.turno, tsf.dias_da_semana
         FROM trabalhador_setor_funcao tsf
@@ -313,7 +308,8 @@ def editar(trabalhador_id):
     vinculos = cursor.fetchall()
 
     conn.close()
-    return render_template("editar.html", trabalhador=trabalhador, setores=setores, funcoes=funcoes, vinculos=vinculos)
+    return render_template("editar.html", trabalhador=trabalhador, setores=setores, vinculos=vinculos)
+
 
 @app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
 @login_required # Protege esta rota
@@ -325,7 +321,12 @@ def atualizar(trabalhador_id):
     cursor = conn.cursor()
 
     nome = request.form.get("nome")
-    cpf = request.form.get("cpf")
+    cpf = request.form.get("cpf").replace('.', '').replace('-', '') # Remove máscara
+    if not validar_cpf(cpf): # Valida o CPF novamente
+        conn.close()
+        flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
+        return redirect(url_for('editar', trabalhador_id=trabalhador_id))
+
     celular = request.form.get("celular")
     profissao = request.form.get("profissao")
     nascimento = request.form.get("nascimento")
@@ -336,8 +337,6 @@ def atualizar(trabalhador_id):
     setores = request.form.getlist("setores[]")
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
-    # ATENÇÃO: Mesma observação da função 'inserir()' sobre 'dias_da_semana[]'.
-    # O frontend DEVE garantir que esta lista esteja alinhada com os outros campos.
     dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
 
     try:
@@ -363,7 +362,7 @@ def atualizar(trabalhador_id):
         bairro = request.form.get("bairro")
         cidade = request.form.get("cidade")
         estado = request.form.get("estado")
-        complemento = request.form.get("complemento") # Novo campo
+        complemento = request.form.get("complemento")
 
         # Atualizar endereço
         cursor.execute("""
@@ -379,7 +378,6 @@ def atualizar(trabalhador_id):
             setor_id = setores[i]
             funcao_id = funcoes[i]
             turno = turnos[i]
-            # Tenta obter os dias da semana para este vínculo específico.
             dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
 
             cursor.execute("""
@@ -393,7 +391,7 @@ def atualizar(trabalhador_id):
     except Exception as e:
         conn.rollback()
         flash(f"Erro ao atualizar trabalhador: {str(e)}", "danger")
-        return redirect(url_for('editar', trabalhador_id=trabalhador_id)) # Redireciona de volta para a edição com erro
+        return redirect(url_for('editar', trabalhador_id=trabalhador_id))
     finally:
         conn.close()
 
@@ -453,7 +451,6 @@ def api_relatorios():
 
     lista = []
     for row in dados:
-        # Ajustar os índices conforme a nova query
         lista.append({
             "id": row[0],
             "nome": row[1],
@@ -467,12 +464,12 @@ def api_relatorios():
             "bairro": row[9],
             "cidade": row[10],
             "estado": row[11],
-            "complemento": row[12], # Novo campo
+            "complemento": row[12],
             "setor": row[13],
             "funcao": row[14],
             "turno": row[15],
             "dias_da_semana": row[16],
-            "email": row[17] # Email agora é o 17º elemento (índice 17)
+            "email": row[17]
         })
 
     conn.close()

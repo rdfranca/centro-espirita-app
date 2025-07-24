@@ -44,7 +44,6 @@
                 <p class="text-muted">Nenhum vínculo encontrado.</p>
                 {% endif %}
 
-                <!-- Botões de ação -->
                 <div class="mt-3 d-flex justify-content-end">
                     <a href="{{ url_for('editar', trabalhador_id=r.id) }}" class="btn btn-warning me-2">✏️ Editar</a>
                     <button type="button" class="btn btn-danger" onclick="confirmarExclusao({{ r.id }}, '{{ r.nome | e }}')">🗑️ Excluir</button>
@@ -58,7 +57,6 @@
     <a href="/painel" class="btn btn-primary mt-4">Voltar</a>
 </div>
 
-<!-- Modal de Confirmação de Exclusão (Customizado) -->
 <div class="modal fade" id="confirmarExclusaoModal" tabindex="-1" aria-labelledby="confirmarExclusaoModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -88,7 +86,6 @@ function confirmarExclusao(trabalhadorId, trabalhadorNome) {
     $('#nomeTrabalhadorExcluir').text(trabalhadorNome); // Atualiza o nome no modal
     
     // Agora que o Bootstrap JS é carregado no base.html, bootstrap.Modal DEVE estar disponível.
-    // Removido o fallback window.confirm, pois o modal deve funcionar.
     const myModal = new bootstrap.Modal(document.getElementById('confirmarExclusaoModal'));
     myModal.show();
     console.log("2. Modal de confirmação exibido.");
@@ -140,10 +137,6 @@ function executarExclusao() {
 }
 
 // Evento de clique no botão "Excluir" dentro do modal
-// Este listener é adicionado uma única vez quando o DOM está pronto
 document.getElementById('btnConfirmarExclusao').addEventListener('click', executarExclusao);
-
-// Removidas as verificações de jQuery e Bootstrap no DOMContentLoaded,
-// pois agora eles são carregados no base.html e devem estar sempre disponíveis.
 </script>
 {% endblock %}

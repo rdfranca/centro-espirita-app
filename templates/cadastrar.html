@@ -1,129 +1,14 @@
 {% extends "base.html" %}
+{% from "macros.html" import render_personal_data_fields, render_address_fields, render_vinculos_section %}
+
 {% block content %}
 <div class="container mt-5">
     <h1 class="text-center mb-4">Cadastrar Novo Trabalhador</h1>
 
     <form action="/inserir" method="POST">
-        <h4>Dados Pessoais</h4>
-        <div class="mb-3">
-            <label for="nome" class="form-label">Nome completo</label>
-            <input type="text" name="nome" id="nome" placeholder="Nome completo" required class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="cpf" class="form-label">CPF</label>
-            <input type="text" name="cpf" id="cpf" maxlength="14" placeholder="CPF" required class="form-control">
-            <small id="cpfErro" class="text-danger" style="display: none;">CPF inválido. Digite um CPF válido com 11 números.</small>
-        </div>
-        <div class="mb-3">
-            <label for="celular" class="form-label">Celular</label>
-            <input type="text" name="celular" id="celular" placeholder="Celular" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="profissao" class="form-label">Profissão</label>
-            <input type="text" name="profissao" id="profissao" placeholder="Profissão" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="email" class="form-label">Email</label>
-            <input type="email" name="email" id="email" placeholder="Email" required class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="password" class="form-label">Senha</label>
-            <div class="input-group">
-                <input type="password" name="password" id="password" placeholder="Senha" required class="form-control">
-                <button class="btn btn-outline-secondary" type="button" id="togglePassword"></button>
-                <button class="btn btn-outline-secondary" type="button" id="generatePassword">Gerar Senha</button>
-            </div>
-            <small id="passwordStrength" class="text-muted">A senha deve conter letras maiúsculas e minúsculas, números e caracteres especiais.</small>
-        </div>
-        <div class="mb-3">
-            <label for="confirmPassword" class="form-label">Confirmar Senha</label>
-            <div class="input-group">
-                <input type="password" name="confirmPassword" id="confirmPassword" placeholder="Confirmar Senha" required class="form-control">
-                <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword"></button>
-            </div>
-            <small id="passwordMatchError" class="text-danger" style="display: none;">As senhas não coincidem.</small>
-        </div>
-        <div class="mb-3">
-            <label for="nascimento" class="form-label">Data de nascimento</label>
-            <input type="date" name="nascimento" id="nascimento" placeholder="Data de nascimento" class="form-control">
-        </div>
-
-        <h4>Endereço</h4>
-        <div class="mb-3">
-            <label for="cep" class="form-label">CEP</label>
-            <input type="text" name="cep" id="cep" placeholder="CEP" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="rua" class="form-label">Rua</label>
-            <input type="text" name="rua" id="rua" placeholder="Rua" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="numero" class="form-label">Número</label>
-            <input type="text" name="numero" id="numero" placeholder="Número" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="complemento" class="form-label">Complemento</label> {# Novo campo Complemento #}
-            <input type="text" name="complemento" id="complemento" placeholder="Ex: Apt 101, Bloco B" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="bairro" class="form-label">Bairro</label>
-            <input type="text" name="bairro" id="bairro" placeholder="Bairro" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="cidade" class="form-label">Cidade</label>
-            <input type="text" name="cidade" id="cidade" placeholder="Cidade" class="form-control">
-        </div>
-        <div class="mb-3">
-            <label for="estado" class="form-label">Estado</label>
-            <input type="text" name="estado" id="estado" placeholder="Estado" class="form-control">
-        </div>
-
-        <h4>Setores, Funções e Turnos</h4>
-        <div id="vinculos">
-            <div class="row g-3 align-items-end mb-3 vinculo">
-                <div class="col">
-                    <label for="setores[]" class="form-label">Setor:</label>
-                    <select name="setores[]" class="form-select setor">
-                        <option disabled selected>Selecione o setor</option>
-                        {% for id, nome in setores %}
-                            <option value="{{ id }}">{{ nome }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="funcoes[]" class="form-label">Função:</label>
-                    <select name="funcoes[]" class="form-select funcao">
-                        <option disabled selected>Selecione o setor primeiro</option>
-                    </select>
-                </div>
-                <div class="col">
-                    <label for="dias_da_semana_raw[]" class="form-label">Dias da Semana:</label>
-                    {# O select real, mas com um nome diferente para não ser pego diretamente pelo Flask #}
-                    <select name="dias_da_semana_raw[]" class="form-select dias-da-semana-select" multiple>
-                        <option value="Segunda-feira">Segunda-feira</option>
-                        <option value="Terça-feira">Terça-feira</option>
-                        <option value="Quarta-feira">Quarta-feira</option>
-                        <option value="Quinta-feira">Quinta-feira</option>
-                        <option value="Sexta-feira">Sexta-feira</option>
-                        <option value="Sábado">Sábado</option>
-                        <option value="Domingo">Domingo</option>
-                    </select>
-                    {# Campo oculto que o Flask realmente lerá, com os valores combinados #}
-                    <input type="hidden" name="dias_da_semana[]" class="dias-da-semana-hidden-input">
-                </div>
-                <div class="col">
-                    <label for="turnos[]" class="form-label">Turno:</label>
-                    <select name="turnos[]" class="form-select">
-                        <option disabled selected>Selecione o turno</option>
-                        <option value="Manhã">Manhã</option>
-                        <option value="Tarde">Tarde</option>
-                        <option value="Noite">Noite</option>
-                        <option value="Não se aplica">Não se aplica</option> {# Added option #}
-                    </select>
-                </div>
-            </div>
-        </div>
-        <button type="button" class="btn btn-secondary mt-2" onclick="adicionarVinculo()">➕ Adicionar outro Setor</button>
+        {{ render_personal_data_fields() }}
+        {{ render_address_fields() }}
+        {{ render_vinculos_section(setores) }}
 
         <div class="d-flex justify-content-end mt-4">
             <button type="submit" class="btn btn-success">Salvar</button>
@@ -132,114 +17,10 @@
 </div>
 
 <script>
-function atualizarDiasDaSemanaHidden(vinculoDiv) {
-    const selectDias = vinculoDiv.querySelector('.dias-da-semana-select');
-    const hiddenInput = vinculoDiv.querySelector('.dias-da-semana-hidden-input');
-    if (selectDias && hiddenInput) {
-        const selectedOptions = Array.from(selectDias.selectedOptions).map(option => option.value);
-        hiddenInput.value = selectedOptions.join(',');
-    }
-}
-
-function aplicarEventosVinculo(vinculo) {
-    const selectSetor = vinculo.querySelector('select[name="setores[]"]');
-    const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
-    const selectDiasDaSemana = vinculo.querySelector('.dias-da-semana-select'); // Seleciona o select de dias
-
-    if (selectSetor && selectFuncao) {
-        selectSetor.addEventListener('change', function () {
-            const setorId = this.value;
-            fetch(`/api/funcoes_por_setor/${setorId}`)
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Funções recebidas:", data);
-                    selectFuncao.innerHTML = '<option disabled selected>Selecione a função</option>';
-                    data.forEach(item => {
-                        const opt = document.createElement('option');
-                        opt.value = item.id;
-                        opt.textContent = item.nome;
-                        selectFuncao.appendChild(opt);
-                    });
-                })
-                .catch(err => console.error("Erro ao buscar funções:", err));
-        });
-    }
-
-    // Adiciona listener para o select de dias da semana
-    if (selectDiasDaSemana) {
-        selectDiasDaSemana.addEventListener('change', () => atualizarDiasDaSemanaHidden(vinculo));
-        // Chama a função uma vez para preencher o campo oculto no carregamento da página (se houver valores pré-selecionados)
-        atualizarDiasDaSemanaHidden(vinculo);
-    }
-
-
-    const btnRemover = vinculo.querySelector('.remover-vinculo');
-    if (btnRemover) {
-        btnRemover.addEventListener('click', () => vinculo.remove());
-    }
-}
-
-function validarCPF(cpf) {
-    cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-
-    let soma = 0;
-    for (let i = 0; i < 9; i++) {
-        soma += parseInt(cpf.charAt(i)) * (10 - i);
-    }
-    let resto = (soma * 10) % 11;
-    if (resto === 10 || resto === 11) resto = 0;
-    if (resto !== parseInt(cpf.charAt(9))) return false;
-
-    soma = 0;
-    for (let i = 0; i < 10; i++) {
-        soma += parseInt(cpf.charAt(i)) * (11 - i);
-    }
-    resto = (soma * 10) % 11;
-    if (resto === 10 || resto === 11) resto = 0;
-    if (resto !== parseInt(cpf.charAt(10))) return false;
-
-    return true;
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-
-function aplicarMascaraCPF(campo) {
-    campo.addEventListener('input', function () {
-        let value = this.value.replace(/\D/g, '').slice(0, 11);
-        if (value.length > 9)
-            this.value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-        else if (value.length > 6)
-            this.value = value.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
-        else if (value.length > 3)
-            this.value = value.replace(/(\d{3})(\d{0,3})/, "$1.$2");
-        else
-            this.value = value;
-    });
-}
-
-function aplicarMascaraCEP(campo) {
-    campo.addEventListener('input', function () {
-        let value = this.value.replace(/\D/g, '').slice(0, 8);
-        if (value.length > 5)
-            this.value = value.replace(/(\d{5})(\d{0,3})/, "$1-$2");
-        else
-            this.value = value;
-    });
-}
-
-// Essas linhas devem estar FORA das funções acima:
-const cpfInput = document.getElementById("cpf");
-if (cpfInput) aplicarMascaraCPF(cpfInput);
-
-const cepInput = document.getElementById("cep");
-if (cepInput) aplicarMascaraCEP(cepInput);
-
-
-    document.querySelectorAll('.vinculo').forEach(aplicarEventosVinculo);
-
+    const cpfInput = document.getElementById("cpf");
+    const cepInput = document.getElementById("cep");
     const form = document.querySelector("form");
-    
     const cpfErro = document.getElementById("cpfErro");
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
@@ -247,26 +28,31 @@ if (cepInput) aplicarMascaraCEP(cepInput);
     const toggleConfirmPasswordButton = document.getElementById('toggleConfirmPassword');
     const generatePasswordButton = document.getElementById('generatePassword');
     const passwordMatchError = document.getElementById('passwordMatchError');
-   
 
+    // Aplica máscaras
+    if (cpfInput) aplicarMascaraCPF(cpfInput);
+    if (cepInput) aplicarMascaraCEP(cepInput);
 
-    // Validação de CPF antes do envio do formulário
+    // Inicializa os elementos de vínculo existentes (para o primeiro bloco)
+    // Passa os dados de setores para a função comum
+    document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(vinculo, {{ setores | tojson }}));
+
+    // Validação de envio do formulário
     if (form) {
         form.addEventListener("submit", function (e) {
             if (cpfInput && cpfErro) {
-        const cpf = cpfInput.value.replace(/\D/g, ''); // <-- REMOVE a máscara
-        if (!validarCPF(cpf)) {
-            e.preventDefault();
-            cpfErro.style.display = "block";
-            cpfInput.classList.add('is-invalid');
-            cpfInput.focus();
-        } else {
-            cpfErro.style.display = "none";
-            cpfInput.classList.remove('is-invalid');
-        }
-    }
+                const cpf = cpfInput.value.replace(/\D/g, '');
+                if (!validarCPF(cpf)) {
+                    e.preventDefault();
+                    cpfErro.style.display = "block";
+                    cpfInput.classList.add('is-invalid');
+                    cpfInput.focus();
+                } else {
+                    cpfErro.style.display = "none";
+                    cpfInput.classList.remove('is-invalid');
+                }
+            }
 
-            // Validação de senhas coincidentes antes do envio do formulário
             if (passwordInput && confirmPasswordInput && passwordMatchError) {
                 if (passwordInput.value !== confirmPasswordInput.value) {
                     e.preventDefault();
@@ -284,26 +70,25 @@ if (cepInput) aplicarMascaraCEP(cepInput);
     // Validação de CPF ao perder o foco (blur)
     if (cpfInput && cpfErro) {
         cpfInput.addEventListener('blur', function () {
-    const cpf = this.value.replace(/\D/g, ''); // <-- REMOVE a máscara
-    if (cpf.length > 0 && !validarCPF(cpf)) {
-        cpfErro.style.display = 'block';
-        this.classList.add('is-invalid');
-    } else {
-        cpfErro.style.display = 'none';
-        this.classList.remove('is-invalid');
-    }
-});
+            const cpf = this.value.replace(/\D/g, '');
+            if (cpf.length > 0 && !validarCPF(cpf)) {
+                cpfErro.style.display = 'block';
+                this.classList.add('is-invalid');
+            } else {
+                cpfErro.style.display = 'none';
+                this.classList.remove('is-invalid');
+            }
+        });
     }
 
     // Preenchimento de CEP
     if (cepInput) {
         cepInput.addEventListener("blur", function () {
             const cep = this.value.replace(/\D/g, '');
-
             if (cep.length !== 8) {
                 document.querySelector('input[name="rua"]').value = '';
-                document.querySelector('input[name="numero"]').value = ''; // Adicionado para limpar o número
-                document.querySelector('input[name="complemento"]').value = ''; // Adicionado para limpar o complemento
+                document.querySelector('input[name="numero"]').value = '';
+                document.querySelector('input[name="complemento"]').value = '';
                 document.querySelector('input[name="bairro"]').value = '';
                 document.querySelector('input[name="cidade"]').value = '';
                 document.querySelector('input[name="estado"]').value = '';
@@ -311,14 +96,13 @@ if (cepInput) aplicarMascaraCEP(cepInput);
             }
 
             const rua = document.querySelector('input[name="rua"]');
-            const numero = document.querySelector('input[name="numero"]'); // Adicionado
-            const complemento = document.querySelector('input[name="complemento"]'); // Adicionado
+            const numero = document.querySelector('input[name="numero"]');
+            const complemento = document.querySelector('input[name="complemento"]');
             const bairro = document.querySelector('input[name="bairro"]');
             const cidade = document.querySelector('input[name="cidade"]');
             const estado = document.querySelector('input[name="estado"]');
 
             rua.value = bairro.value = cidade.value = estado.value = "Carregando...";
-            // Incluir complemento e número na desativação
             rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = true;
 
             fetch(`https://viacep.com.br/ws/${cep}/json/`)
@@ -328,7 +112,6 @@ if (cepInput) aplicarMascaraCEP(cepInput);
                         rua.value = numero.value = complemento.value = bairro.value = cidade.value = estado.value = "";
                     } else {
                         rua.value = data.logradouro;
-                        // O ViaCEP geralmente não retorna número ou complemento, então eles permanecem vazios ou como estavam
                         bairro.value = data.bairro;
                         cidade.value = data.localidade;
                         estado.value = data.uf;
@@ -338,42 +121,32 @@ if (cepInput) aplicarMascaraCEP(cepInput);
                     // Tratar erro na busca do CEP
                 })
                 .finally(() => {
-                    // Incluir complemento e número na reativação
                     rua.disabled = numero.disabled = complemento.disabled = bairro.disabled = cidade.disabled = estado.disabled = false;
                 });
         });
     }
 
-    // Função para alternar a visibilidade da senha
-    function togglePasswordVisibility(input, button) {
-        if (input.type === 'password') {
-            input.type = 'text';
-            button.innerHTML = '🙈'; // Ícone de olho riscado (ocultar)
-        } else {
-            input.type = 'password';
-            button.innerHTML = '👁️'; // Ícone de olho (mostrar)
-        }
-    }
-
-    // Event Listeners para alternar visibilidade
+    // Alternar visibilidade da senha
     if (togglePasswordButton && passwordInput) {
+        togglePasswordButton.innerHTML = '👁️'; // Define o ícone inicial
         togglePasswordButton.addEventListener('click', () => togglePasswordVisibility(passwordInput, togglePasswordButton));
     }
     if (toggleConfirmPasswordButton && confirmPasswordInput) {
+        toggleConfirmPasswordButton.innerHTML = '👁️'; // Define o ícone inicial
         toggleConfirmPasswordButton.addEventListener('click', () => togglePasswordVisibility(confirmPasswordInput, toggleConfirmPasswordButton));
     }
 
-    // Event Listener para gerar senha forte
+    // Gerar senha forte
     if (generatePasswordButton && passwordInput && confirmPasswordInput) {
         generatePasswordButton.addEventListener('click', function () {
             const newPassword = generateStrongPassword(12);
             passwordInput.value = newPassword;
-            confirmPasswordInput.value = newPassword; // Preenche o campo de confirmação também
-            passwordInput.type = 'text'; // Mostra a senha gerada
+            confirmPasswordInput.value = newPassword;
+            passwordInput.type = 'text';
             confirmPasswordInput.type = 'text';
             if (togglePasswordButton) togglePasswordButton.innerHTML = '🙈';
             if (toggleConfirmPasswordButton) toggleConfirmPasswordButton.innerHTML = '🙈';
-            if (passwordMatchError) passwordMatchError.style.display = 'none'; // Esconde a mensagem de erro se houver
+            if (passwordMatchError) passwordMatchError.style.display = 'none';
         });
     }
 
@@ -388,7 +161,6 @@ if (cepInput) aplicarMascaraCEP(cepInput);
                 confirmPasswordInput.classList.remove('is-invalid');
             }
         });
-        // Também valida quando a senha principal muda
         passwordInput.addEventListener('blur', function() {
             if (confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value) {
                 passwordMatchError.style.display = 'block';
@@ -401,34 +173,7 @@ if (cepInput) aplicarMascaraCEP(cepInput);
     }
 });
 
-function generateStrongPassword(length) {
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
-    let password = "";
-
-    const types = [
-        "abcdefghijklmnopqrstuvwxyz",
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-        "0123456789",
-        "!@#$%^&*()_+~`|}{[]:;?><,./-="
-    ];
-
-    for (let i = 0; i < types.length; i++) {
-        password += getRandomChar(types[i]);
-    }
-
-    for (let i = types.length; i < length; i++) {
-        password += getRandomChar(charset);
-    }
-
-    password = password.split('').sort(() => 0.5 - Math.random()).join('');
-
-    return password;
-}
-
-function getRandomChar(charset) {
-    return charset[Math.floor(Math.random() * charset.length)];
-}
-
+// Esta função precisa ser global para ser chamada pelo botão "Adicionar outro Setor"
 function adicionarVinculo() {
     const container = document.getElementById("vinculos");
     const div = document.createElement('div');
@@ -469,7 +214,7 @@ function adicionarVinculo() {
                 <option value="Manhã">Manhã</option>
                 <option value="Tarde">Tarde</option>
                 <option value="Noite">Noite</option>
-                <option value="Não se aplica">Não se aplica</option> {# Added option #}
+                <option value="Não se aplica">Não se aplica</option>
             </select>
         </div>
         <div class="col-auto">
@@ -477,7 +222,7 @@ function adicionarVinculo() {
         </div>
     `;
     container.appendChild(div);
-    aplicarEventosVinculo(div);
+    aplicarEventosVinculo(div, {{ setores | tojson }}); // Passa os dados de setores
 }
 </script>
 {% endblock %}
