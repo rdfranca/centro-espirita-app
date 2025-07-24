@@ -58,12 +58,12 @@ def login():
 
         if trabalhador_data and trabalhador_data[1] and check_password_hash(trabalhador_data[1], password):
             # Autenticação bem-sucedida
-            session['trabalhador_id'] = trabalhador_data[0] # Armazena o ID do trabalhador na sessão
+            session['trabalhador_id'] = trabalhador_data[0]
             flash("Login realizado com sucesso!", "success")
             return redirect(url_for('painel'))
         else:
             flash("Usuário (Email) ou senha inválidos.", "danger")
-            return render_template('login.html') # Renderiza o login novamente com a mensagem de erro
+            return render_template('login.html')
     return render_template('login.html')
 
 @app.route('/logout')
@@ -74,13 +74,13 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/painel')
-@login_required # Protege esta rota
+@login_required
 def painel():
     """Renderiza a página do painel principal."""
     return render_template('index.html')
 
 @app.route("/buscar", methods=["GET"])
-@login_required # Protege esta rota
+@login_required
 def buscar():
     """
     Busca trabalhadores por nome ou CPF e retorna os resultados.
@@ -142,7 +142,7 @@ def buscar():
     return render_template("resultado.html", resultados=resultados)
 
 @app.route("/cadastrar")
-@login_required # Protege esta rota
+@login_required
 def cadastrar():
     """
     Renderiza a página de cadastro de trabalhadores.
@@ -156,7 +156,7 @@ def cadastrar():
     return render_template("cadastrar.html", setores=setores)
 
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
-@login_required # Protege esta rota
+@login_required
 def api_funcoes_por_setor(setor_id):
     """
     Retorna as funções associadas a um setor específico para uso em filtros e formulários, em formato JSON.
@@ -206,7 +206,7 @@ def validar_cpf(cpf):
     return True
 
 @app.route("/inserir", methods=["POST"])
-@login_required # Protege esta rota
+@login_required
 def inserir():
     """
     Insere um novo trabalhador, seu endereço, email, senha e seus vínculos de setor/função/turno no banco de dados.
@@ -279,7 +279,7 @@ def inserir():
 
 
 @app.route('/editar/<int:trabalhador_id>')
-@login_required # Protege esta rota
+@login_required
 def editar(trabalhador_id):
     """
     Renderiza a página de edição de um trabalhador específico.
@@ -312,7 +312,7 @@ def editar(trabalhador_id):
 
 
 @app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
-@login_required # Protege esta rota
+@login_required
 def atualizar(trabalhador_id):
     """
     Atualiza os dados de um trabalhador existente, seu endereço e seus vínculos.
@@ -322,7 +322,7 @@ def atualizar(trabalhador_id):
 
     nome = request.form.get("nome")
     cpf = request.form.get("cpf").replace('.', '').replace('-', '') # Remove máscara
-    if not validar_cpf(cpf): # Valida o CPF novamente
+    if not validar_cpf(cpf):
         conn.close()
         flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
         return redirect(url_for('editar', trabalhador_id=trabalhador_id))
@@ -396,7 +396,7 @@ def atualizar(trabalhador_id):
         conn.close()
 
 @app.route('/deletar/<int:trabalhador_id>', methods=['POST'])
-@login_required # Protege esta rota
+@login_required
 def deletar_trabalhador(trabalhador_id):
     """
     Exclui um trabalhador e todos os seus dados relacionados (endereço e vínculos) do banco de dados.
@@ -419,13 +419,13 @@ def deletar_trabalhador(trabalhador_id):
         conn.close()
 
 @app.route('/relatorios')
-@login_required # Protege esta rota
+@login_required
 def relatorios():
     """Renderiza a página de relatórios."""
     return render_template("relatorios.html")
 
 @app.route('/api/relatorios')
-@login_required # Protege esta rota
+@login_required
 def api_relatorios():
     """
     Retorna todos os dados de trabalhadores, endereços e seus vínculos em formato JSON.
@@ -476,7 +476,7 @@ def api_relatorios():
     return jsonify(lista)
 
 @app.route('/api/setores_para_filtro', methods=['GET'])
-@login_required # Protege esta rota
+@login_required
 def api_setores_para_filtro():
     """
     Retorna todos os setores disponíveis para uso em filtros, em formato JSON.
@@ -489,7 +489,7 @@ def api_setores_para_filtro():
     return jsonify([{'id': s[0], 'nome': s[1]} for s in setores])
 
 
-# --- NOVAS ROTAS PARA GERENCIAMENTO DE SETORES E FUNÇÕES ---
+# --- ROTAS PARA GERENCIAMENTO DE SETORES E FUNÇÕES ---
 
 @app.route('/gerenciar_estrutura')
 @login_required
@@ -513,7 +513,6 @@ def gerenciar_estrutura():
     conn.close()
     return render_template('gerenciar_estrutura.html', setores=setores, funcoes=funcoes)
 
-# ESTA É A VERSÃO CORRETA E ÚNICA DA FUNÇÃO 'adicionar_setor'
 @app.route('/setor/adicionar', methods=['POST'])
 @login_required
 def adicionar_setor():
