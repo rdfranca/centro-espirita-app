@@ -3,24 +3,14 @@ import psycopg2
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from collections import defaultdict # Importação adicionada
+from collections import defaultdict
 
 app = Flask(__name__)
 
-# --- CONFIGURAÇÃO DE SESSÃO ---
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "sua_chave_secreta_muito_segura_e_aleatoria_aqui_12345")
-# --- FIM CONFIGURAÇÃO DE SESSÃO ---
-
-# ATENÇÃO: SUBSTITUA PELO ID REAL DO SETOR 'ENSINO' QUE VOCÊ OBTEVE NO BANCO DE DADOS.
-# Para obter este ID, execute no seu banco de dados: SELECT id FROM setores WHERE lower(nome) = 'ensino';
-# Se o setor 'Ensino' não existir, cadastre-o primeiro na página 'Gerenciar Estrutura'.
-ID_SETOR_ENSINO = 11 # <<<<<<<< SUBSTITUA ESTE VALOR PELO ID REAL DO SEU SETOR 'ENSINO'
+ID_SETOR_ENSINO = 11
 
 def conectar():
-    """
-    Função para estabelecer conexão com o banco de dados PostgreSQL.
-    As credenciais são obtidas de variáveis de ambiente.
-    """
     return psycopg2.connect(
         host=os.environ.get("DB_HOST"),
         database=os.environ.get("DB_NAME"),
@@ -29,7 +19,6 @@ def conectar():
         port=os.environ.get("DB_PORT", 5432)
     )
 
-# --- DECORADOR PARA PROTEGER ROTAS ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -38,19 +27,13 @@ def login_required(f):
             return redirect(url_for('login'))
         return f(*args, **kwargs)
     return decorated_function
-# --- FIM DECORADOR ---
 
 @app.route("/")
 def index():
-    """Redireciona para a página de login."""
     return redirect(url_for("login"))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    Lida com a autenticação do usuário.
-    Agora verifica email e senha_hash no banco de dados e armazena o ID na sessão.
-    """
     if request.method == 'POST':
         email = request.form.get('username')
         password = request.form.get('password')
@@ -62,7 +45,6 @@ def login():
         conn.close()
 
         if trabalhador_data and trabalhador_data[1] and check_password_hash(trabalhador_data[1], password):
-            # Autenticação bem-sucedida
             session['trabalhador_id'] = trabalhador_data[0]
             flash("Login realizado com sucesso!", "success")
             return redirect(url_for('painel'))
@@ -73,7 +55,6 @@ def login():
 
 @app.route('/logout')
 def logout():
-    """Remove o usuário da sessão."""
     session.pop('trabalhador_id', None)
     flash("Você foi desconectado.", "info")
     return redirect(url_for('login'))
@@ -81,21 +62,15 @@ def logout():
 @app.route('/painel')
 @login_required
 def painel():
-    """Renderiza a página do painel principal."""
     return render_template('index.html')
 
 @app.route("/buscar", methods=["GET"])
 @login_required
 def buscar():
-    """
-    Busca trabalhadores por nome ou CPF e retorna os resultados,
-    agrupando os vínculos e cursos de ensino para evitar duplicação.
-    """
-    nome_busca = request.args.get("nome", "").strip() # Use .strip() para remover espaços em branco
+    nome_busca = request.args.get("nome", "").strip()
     conn = conectar()
     cursor = conn.cursor()
 
-    # Dicionário para armazenar trabalhadores, usando o ID como chave para evitar duplicação
     trabalhadores_agrupados = defaultdict(lambda: {
         "id": None, "nome": None, "cpf": None, "celular": None, "profissao": None,
         "nascimento": None, "cep": None, "rua": None, "numero": None, "bairro": None,
@@ -104,10 +79,6 @@ def buscar():
     })
 
     if nome_busca:
-        # 1. Buscar todos os trabalhadores que correspondem ao critério de busca
-        # Adicionado DISTINCT ON (t.id) para garantir que cada trabalhador apareça apenas uma vez,
-        # mesmo que haja múltiplas entradas de endereço para o mesmo trabalhador (o que seria incomum).
-        # ORDER BY t.id é necessário para usar DISTINCT ON.
         cursor.execute("""
             SELECT DISTINCT ON (t.id) t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
                    e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email
@@ -118,7 +89,6 @@ def buscar():
         """, (f"%{nome_busca}%", f"%{nome_busca}%"))
         trabalhadores_raw = cursor.fetchall()
 
-        # Preencher os dados básicos de cada trabalhador no dicionário agrupado
         for t_data in trabalhadores_raw:
             trabalhador_id = t_data[0]
             trabalhadores_agrupados[trabalhador_id].update({
@@ -138,32 +108,40 @@ def buscar():
                 "email": t_data[13]
             })
 
-        # 2. Buscar todos os vínculos para os trabalhadores encontrados
-        # Isso evita múltiplas consultas dentro do loop
         if trabalhadores_agrupados:
-            trabalhador_ids = tuple(trabalhadores_agrupados.keys()) # Converte para tupla para usar em IN clause
+            trabalhador_ids = tuple(trabalhadores_agrupados.keys())
             cursor.execute(f"""
                 SELECT tsf.trabalhador_id, s.nome, f.nome, tsf.turno, tsf.dias_da_semana
                 FROM trabalhador_setor_funcao tsf
                 LEFT JOIN setores s ON tsf.setor_id = s.id
                 LEFT JOIN funcao f ON tsf.funcao_id = f.id
                 WHERE tsf.trabalhador_id IN %s
-            """, (trabalhador_ids,)) # Passa a tupla diretamente
+            """, (trabalhador_ids,))
             vinculos_raw = cursor.fetchall()
 
-            # Associar vínculos aos trabalhadores
+            vinculos_por_trabalhador = defaultdict(lambda: defaultdict(lambda: {
+                "funcoes": set(), "turnos": set(), "dias": set()
+            }))
+
             for v_data in vinculos_raw:
                 trabalhador_id = v_data[0]
                 setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
-                if setor and funcao and turno: # Garante que o vínculo tem dados completos
+                if setor and funcao and turno:
+                    chave = setor.strip().lower()
+                    vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add(funcao)
+                    vinculos_por_trabalhador[trabalhador_id][chave]["turnos"].add(turno)
+                    if dias_da_semana:
+                        vinculos_por_trabalhador[trabalhador_id][chave]["dias"].add(dias_da_semana)
+
+            for trabalhador_id, setores_info in vinculos_por_trabalhador.items():
+                for setor_nome, info in setores_info.items():
                     trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
-                        "setor": setor,
-                        "funcao": funcao,
-                        "turno": turno,
-                        "dias_da_semana": dias_da_semana
+                        "setor": setor_nome,
+                        "funcao": ", ".join(sorted(info["funcoes"])),
+                        "turno": ", ".join(sorted(info["turnos"])),
+                        "dias_da_semana": ", ".join(sorted(info["dias"]))
                     })
 
-            # 3. Buscar todos os cursos para os trabalhadores encontrados
             cursor.execute(f"""
                 SELECT tce.trabalhador_id, ce.nome
                 FROM trabalhador_curso_ensino tce
@@ -172,674 +150,11 @@ def buscar():
             """, (trabalhador_ids,))
             cursos_raw = cursor.fetchall()
 
-            # Associar cursos aos trabalhadores
             for c_data in cursos_raw:
                 trabalhador_id = c_data[0]
                 curso_nome = c_data[1]
                 trabalhadores_agrupados[trabalhador_id]["cursos_ensino"].append(curso_nome)
 
-    # Converter o dicionário de trabalhadores agrupados para uma lista de resultados finais
     resultados = list(trabalhadores_agrupados.values())
-
     conn.close()
     return render_template("resultado.html", resultados=resultados)
-
-@app.route("/cadastrar")
-@login_required
-def cadastrar():
-    """
-    Renderiza a página de cadastro de trabalhadores.
-    Busca todos os setores, cursos disponíveis e mapeamento de função para setor.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
-    setores = cursor.fetchall()
-    
-    cursor.execute("SELECT id, nome FROM cursos_ensino ORDER BY nome")
-    cursos_disponiveis = cursor.fetchall()
-
-    # NOVO: Mapeamento de funcao_id para setor_id
-    cursor.execute("SELECT id, setor_id FROM funcao")
-    funcao_setor_map = {row[0]: row[1] for row in cursor.fetchall()}
-
-    conn.close()
-    return render_template("cadastrar.html", setores=setores,
-                            cursos_disponiveis=cursos_disponiveis,
-                            id_setor_ensino=ID_SETOR_ENSINO,      # ID do SETOR Ensino
-                            funcao_setor_map=funcao_setor_map)     # Mapeamento funcao->setor
-
-@app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
-@login_required
-def api_funcoes_por_setor(setor_id):
-    """
-    Retorna as funções associadas a um setor específico para uso em filtros e formulários, em formato JSON.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-    # A consulta original estava incorreta para buscar funções por setor.
-    # Assumindo que a tabela 'funcao' tem uma coluna 'setor_id'.
-    cursor.execute('SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome', (setor_id,))
-    funcoes = cursor.fetchall()
-    conn.close()
-    return jsonify([{'id': f[0], 'nome': f[1]} for f in funcoes])
-
-def validar_cpf(cpf):
-    """
-    Valida um número de CPF.
-    Retorna True se o CPF for válido, False caso contrário.
-    """
-    # Remove caracteres não numéricos
-    cpf = ''.join(filter(str.isdigit, cpf))
-
-    if not cpf or len(cpf) != 11:
-        return False
-
-    # Verifica se todos os dígitos são iguais (ex: "111.111.111-11")
-    if cpf == cpf[0] * 11:
-        return False
-
-    # Validação do primeiro dígito verificador
-    soma = 0
-    for i in range(9):
-        soma += int(cpf[i]) * (10 - i)
-    resto = (soma * 10) % 11
-    if resto == 10 or resto == 11:
-        resto = 0
-    if resto != int(cpf[9]):
-        return False
-
-    # Validação do segundo dígito verificador
-    soma = 0
-    for i in range(10):
-        soma += int(cpf[i]) * (11 - i)
-    resto = (soma * 10) % 11
-    if resto == 10 or resto == 11:
-        resto = 0
-    if resto != int(cpf[10]):
-        return False
-
-    return True
-
-@app.route("/inserir", methods=["POST"])
-@login_required
-def inserir():
-    """
-    Insere um novo trabalhador, seu endereço, email, senha, vínculos e cursos de ensino no banco de dados.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-
-    nome = request.form.get("nome")
-    cpf = request.form.get("cpf").replace('.', '').replace('-', '') # Remove máscara
-    if not validar_cpf(cpf):
-        conn.close()
-        flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
-        return redirect(url_for('cadastrar'))
-
-    data_nascimento = request.form.get("nascimento")
-    celular = request.form.get("celular")
-    profissao = request.form.get("profissao")
-    email = request.form.get("email")
-    password = request.form.get("password")
-    hashed_password = generate_password_hash(password)
-
-    cep = request.form.get("cep")
-    rua = request.form.get("rua")
-    numero = request.form.get("numero")
-    bairro = request.form.get("bairro")
-    cidade = request.form.get("cidade")
-    estado = request.form.get("estado")
-    complemento = request.form.get("complemento")
-
-    setores = request.form.getlist("setores[]")
-    funcoes = request.form.getlist("funcoes[]")
-    turnos = request.form.getlist("turnos[]")
-    dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
-
-    cursos_selecionados = request.form.getlist("cursos_ensino[]") # Pega os cursos selecionados do formulário
-
-    try:
-        cursor.execute("""
-            INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao, email, senha_hash)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (nome, cpf, data_nascimento, celular, profissao, email, hashed_password))
-        trabalhador_id = cursor.fetchone()[0]
-
-        cursor.execute("""
-            INSERT INTO endereco (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento))
-
-        for i in range(len(setores)):
-            setor_id = setores[i]
-            funcao_id = funcoes[i]
-            turno = turnos[i]
-            dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
-
-            cursor.execute("""
-                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
-        
-        # Inserir cursos de ensino selecionados para o trabalhador
-        for curso_id in cursos_selecionados:
-            cursor.execute("""
-                INSERT INTO trabalhador_curso_ensino (trabalhador_id, curso_id)
-                VALUES (%s, %s)
-            """, (trabalhador_id, curso_id))
-
-        conn.commit()
-        flash("Trabalhador cadastrado com sucesso!", "success")
-        return redirect(url_for('painel'))
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao cadastrar trabalhador: {str(e)}", "danger")
-        return redirect(url_for('cadastrar'))
-    finally:
-        conn.close()
-
-
-@app.route('/editar/<int:trabalhador_id>')
-@login_required
-def editar(trabalhador_id):
-    """
-    Renderiza a página de edição de um trabalhador específico.
-    Busca os dados do trabalhador, setores, vínculos existentes, cursos associados e mapeamento de função para setor.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email, t.senha_hash
-        FROM trabalhador t
-        LEFT JOIN endereco e ON t.id = e.trabalhador_id
-        WHERE t.id = %s
-    """, (trabalhador_id,))
-    trabalhador = cursor.fetchone()
-
-    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
-    setores = cursor.fetchall()
-
-    cursor.execute("""
-        SELECT tsf.setor_id, tsf.funcao_id, tsf.turno, tsf.dias_da_semana
-        FROM trabalhador_setor_funcao tsf
-        WHERE tsf.trabalhador_id = %s
-    """, (trabalhador_id,))
-    vinculos = cursor.fetchall()
-
-    cursor.execute("SELECT id, nome FROM cursos_ensino ORDER BY nome")
-    cursos_disponiveis = cursor.fetchall()
-
-    cursor.execute("""
-        SELECT tce.curso_id
-        FROM trabalhador_curso_ensino tce
-        WHERE tce.trabalhador_id = %s
-    """, (trabalhador_id,))
-    cursos_selecionados_ids = [row[0] for row in cursor.fetchall()]
-
-    # Mapeamento de funcao_id para setor_id
-    cursor.execute("SELECT id, setor_id FROM funcao")
-    funcao_setor_map = {row[0]: row[1] for row in cursor.fetchall()}
-
-    conn.close()
-    return render_template("editar.html", trabalhador=trabalhador, setores=setores, vinculos=vinculos,
-                            cursos_disponiveis=cursos_disponiveis,
-                            cursos_selecionados_ids=cursos_selecionados_ids,
-                            id_setor_ensino=ID_SETOR_ENSINO,
-                            funcao_setor_map=funcao_setor_map)
-
-
-@app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
-@login_required
-def atualizar(trabalhador_id):
-    """
-    Atualiza os dados de um trabalhador existente, seu endereço, vínculos e cursos de ensino.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-
-    nome = request.form.get("nome")
-    cpf = request.form.get("cpf").replace('.', '').replace('-', '')
-    if not validar_cpf(cpf):
-        conn.close()
-        flash("CPF inválido. Certifique-se de digitar um CPF válido com 11 dígitos.", "danger")
-        return redirect(url_for('editar', trabalhador_id=trabalhador_id))
-
-    celular = request.form.get("celular")
-    profissao = request.form.get("profissao")
-    nascimento = request.form.get("nascimento")
-    email = request.form.get("email")
-    password = request.form.get("password")
-
-    setores = request.form.getlist("setores[]")
-    funcoes = request.form.getlist("funcoes[]")
-    turnos = request.form.getlist("turnos[]")
-    dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
-
-    cursos_selecionados = request.form.getlist("cursos_ensino[]")
-
-
-    try:
-        if password:
-            hashed_password = generate_password_hash(password)
-            cursor.execute("""
-                UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
-                email=%s, senha_hash=%s
-                WHERE id=%s
-            """, (nome, cpf, celular, profissao, nascimento, email, hashed_password, trabalhador_id))
-        else:
-            cursor.execute("""
-                UPDATE trabalhador SET nome=%s, cpf=%s, celular=%s, profissao=%s, data_nascimento=%s,
-                email=%s
-                WHERE id=%s
-            """, (nome, cpf, celular, profissao, nascimento, email, trabalhador_id))
-
-        cep = request.form.get("cep")
-        rua = request.form.get("rua")
-        numero = request.form.get("numero")
-        bairro = request.form.get("bairro")
-        cidade = request.form.get("cidade")
-        estado = request.form.get("estado")
-        complemento = request.form.get("complemento")
-
-        cursor.execute("""
-            UPDATE endereco SET cep=%s, rua=%s, numero=%s, bairro=%s, cidade=%s, estado=%s, complemento=%s
-            WHERE trabalhador_id=%s
-        """, (cep, rua, numero, bairro, cidade, estado, complemento, trabalhador_id))
-
-        cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id=%s", (trabalhador_id,))
-        for i in range(len(setores)):
-            setor_id = setores[i]
-            funcao_id = funcoes[i]
-            turno = turnos[i]
-            dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
-
-            cursor.execute("""
-                INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
-        
-        # Excluir e reinserir cursos de ensino para o trabalhador
-        cursor.execute("DELETE FROM trabalhador_curso_ensino WHERE trabalhador_id = %s", (trabalhador_id,))
-        for curso_id in cursos_selecionados:
-            cursor.execute("""
-                INSERT INTO trabalhador_curso_ensino (trabalhador_id, curso_id)
-                VALUES (%s, %s)
-            """, (trabalhador_id, curso_id))
-
-
-        conn.commit()
-        flash("Dados do trabalhador atualizados com sucesso!", "success")
-        return redirect(url_for('painel'))
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao atualizar trabalhador: {str(e)}", "danger")
-        return redirect(url_for('editar', trabalhador_id=trabalhador_id))
-    finally:
-        conn.close()
-
-@app.route('/deletar/<int:trabalhador_id>', methods=['POST'])
-@login_required
-def deletar_trabalhador(trabalhador_id):
-    """
-    Exclui um trabalhador e todos os seus dados relacionados (endereço e vínculos) do banco de dados.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        # NOVO: Remover vínculos de cursos de ensino
-        cursor.execute("DELETE FROM trabalhador_curso_ensino WHERE trabalhador_id = %s", (trabalhador_id,))
-        
-        cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE trabalhador_id = %s", (trabalhador_id,))
-        cursor.execute("DELETE FROM endereco WHERE trabalhador_id = %s", (trabalhador_id,))
-        cursor.execute("DELETE FROM trabalhador WHERE id = %s", (trabalhador_id,))
-        conn.commit()
-        flash("Trabalhador excluído com sucesso!", "success")
-        return jsonify({"success": True, "message": "Trabalhador excluído com sucesso!"}), 200
-    except Exception as e:
-        conn.rollback()
-        print(f"Erro ao excluir trabalhador: {e}")
-        flash(f"Erro ao excluir trabalhador: {str(e)}", "danger")
-        return jsonify({"success": False, "message": f"Erro ao excluir trabalhador: {str(e)}"}), 500
-    finally:
-        conn.close()
-
-@app.route('/relatorios')
-@login_required
-def relatorios():
-    """Renderiza a página de relatórios."""
-    return render_template("relatorios.html")
-
-@app.route('/api/relatorios')
-@login_required
-def api_relatorios():
-    """
-    Retorna todos os dados de trabalhadores, endereços e seus vínculos em formato JSON.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-
-    # Consulta todos os trabalhadores com seus endereços
-    cursor.execute("""
-        SELECT
-            t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-            e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento,
-            t.email
-        FROM trabalhador t
-        LEFT JOIN endereco e ON t.id = e.trabalhador_id
-    """)
-    trabalhadores_raw = cursor.fetchall()
-
-    trabalhadores_agrupados = defaultdict(lambda: {
-        "id": None, "nome": None, "cpf": None, "celular": None, "profissao": None,
-        "nascimento": None, "cep": None, "rua": None, "numero": None, "bairro": None,
-        "cidade": None, "estado": None, "complemento": None, "email": None,
-        "vinculos": [], "cursos_ensino": []
-    })
-
-    for t_data in trabalhadores_raw:
-        trabalhador_id = t_data[0]
-        trabalhadores_agrupados[trabalhador_id].update({
-            "id": t_data[0],
-            "nome": t_data[1],
-            "cpf": t_data[2],
-            "celular": t_data[3],
-            "profissao": t_data[4],
-            "nascimento": t_data[5],
-            "cep": t_data[6],
-            "rua": t_data[7],
-            "numero": t_data[8],
-            "bairro": t_data[9],
-            "cidade": t_data[10],
-            "estado": t_data[11],
-            "complemento": t_data[12],
-            "email": t_data[13]
-        })
-
-    # Buscar todos os vínculos para todos os trabalhadores
-    if trabalhadores_agrupados:
-        trabalhador_ids = tuple(trabalhadores_agrupados.keys())
-        cursor.execute(f"""
-            SELECT tsf.trabalhador_id, s.nome, f.nome, tsf.turno, tsf.dias_da_semana
-            FROM trabalhador_setor_funcao tsf
-            LEFT JOIN setores s ON tsf.setor_id = s.id
-            LEFT JOIN funcao f ON tsf.funcao_id = f.id
-            WHERE tsf.trabalhador_id IN %s
-        """, (trabalhador_ids,))
-        vinculos_raw = cursor.fetchall()
-
-        for v_data in vinculos_raw:
-            trabalhador_id = v_data[0]
-            setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
-            if setor and funcao and turno:
-                trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
-                    "setor": setor,
-                    "funcao": funcao,
-                    "turno": turno,
-                    "dias_da_semana": dias_da_semana
-                })
-        
-        # Buscar todos os cursos para todos os trabalhadores
-        cursor.execute(f"""
-            SELECT tce.trabalhador_id, ce.nome
-            FROM trabalhador_curso_ensino tce
-            JOIN cursos_ensino ce ON tce.curso_id = ce.id
-            WHERE tce.trabalhador_id IN %s
-        """, (trabalhador_ids,))
-        cursos_raw = cursor.fetchall()
-
-        for c_data in cursos_raw:
-            trabalhador_id = c_data[0]
-            curso_nome = c_data[1]
-            trabalhadores_agrupados[trabalhador_id]["cursos_ensino"].append(curso_nome)
-
-
-    lista_final = list(trabalhadores_agrupados.values())
-
-    conn.close()
-    return jsonify(lista_final)
-
-@app.route('/api/setores_para_filtro', methods=['GET'])
-@login_required
-def api_setores_para_filtro():
-    """
-    Retorna todos os setores disponíveis para uso em filtros, em formato JSON.
-    """
-    conn = conectar()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, nome FROM setores ORDER BY nome')
-    setores = cursor.fetchall()
-    conn.close()
-    return jsonify([{'id': s[0], 'nome': s[1]} for s in setores])
-
-
-# --- ROTAS PARA GERENCIAMENTO DE SETORES E FUNÇÕES ---
-
-@app.route('/gerenciar_estrutura')
-@login_required
-def gerenciar_estrutura():
-    conn = conectar()
-    cursor = conn.cursor()
-
-    # Buscar setores
-    cursor.execute("SELECT id, nome FROM setores ORDER BY nome")
-    setores = cursor.fetchall()
-
-    # Buscar funções com seus setores
-    cursor.execute("""
-        SELECT f.id, f.nome, s.nome as setor_nome, f.setor_id
-        FROM funcao f
-        LEFT JOIN setores s ON f.setor_id = s.id
-        ORDER BY s.nome, f.nome
-    """)
-    funcoes = cursor.fetchall()
-
-    conn.close()
-    return render_template('gerenciar_estrutura.html', setores=setores, funcoes=funcoes)
-
-@app.route('/setor/adicionar', methods=['POST'])
-@login_required
-def adicionar_setor():
-    nome = request.form.get('nome')
-    if not nome:
-        flash("O nome do setor não pode ser vazio.", "danger")
-        return redirect(url_for('gerenciar_estrutura'))
-
-    # Normaliza o nome para minúsculas e remove espaços extras
-    nome_normalizado = nome.strip().lower()
-
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        # Use nome_normalizado na inserção
-        cursor.execute("INSERT INTO setores (nome) VALUES (%s)", (nome_normalizado,))
-        conn.commit()
-        flash(f"Setor '{nome}' adicionado com sucesso!", "success") # Mostra o nome original na flash
-    except psycopg2.errors.UniqueViolation: # Se o nome do setor for UNIQUE
-        conn.rollback()
-        flash(f"O setor '{nome}' já existe.", "warning")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao adicionar setor: {str(e)}", "danger")
-    finally:
-        conn.close()
-    return redirect(url_for('gerenciar_estrutura'))
-
-@app.route('/setor/editar/<int:setor_id>', methods=['POST'])
-@login_required
-def editar_setor(setor_id):
-    novo_nome = request.form.get('nome')
-    if not novo_nome:
-        flash("O nome do setor não pode ser vazio.", "danger")
-        return redirect(url_for('gerenciar_estrutura'))
-
-    # Normaliza o nome para minúsculas e remove espaços extras
-    novo_nome_normalizado = novo_nome.strip().lower()
-
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("UPDATE setores SET nome = %s WHERE id = %s", (novo_nome_normalizado, setor_id))
-        conn.commit()
-        if cursor.rowcount == 0:
-            flash("Setor não encontrado.", "danger")
-        else:
-            flash(f"Setor atualizado para '{novo_nome}' com sucesso!", "success")
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
-        flash(f"O setor '{novo_nome}' já existe.", "warning")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao editar setor: {str(e)}", "danger")
-    finally:
-        conn.close()
-    return redirect(url_for('gerenciar_estrutura'))
-
-@app.route('/setor/deletar/<int:setor_id>', methods=['POST'])
-@login_required
-def deletar_setor(setor_id):
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        # Primeiro, remover vínculos de trabalhador com funções neste setor
-        cursor.execute("""
-            DELETE FROM trabalhador_setor_funcao
-            WHERE setor_id = %s
-        """, (setor_id,))
-
-        # NOVO: Remover vínculos de cursos de ensino para trabalhadores que tinham funções neste setor
-        # Esta lógica pode ser problemática se um trabalhador tiver múltiplos vínculos em diferentes setores
-        # e você só quiser remover os cursos se o setor deletado for o ÚNICO vínculo de ensino.
-        # Se um trabalhador tiver um vínculo de ensino em outro setor que não está sendo deletado,
-        # esta query pode remover os cursos indevidamente.
-        # Uma abordagem mais segura seria:
-        # 1. Identificar trabalhadores que SÓ têm vínculos no setor a ser deletado.
-        # 2. Ou, se a remoção de cursos for estritamente ligada à remoção de QUALQUER vínculo de ensino,
-        #    manter como está, mas com a ressalva.
-        # Por simplicidade e para manter a estrutura original, mantive a query, mas com a observação.
-        cursor.execute("""
-            DELETE FROM trabalhador_curso_ensino
-            WHERE trabalhador_id IN (
-                SELECT t.id FROM trabalhador t
-                JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
-                WHERE tsf.setor_id = %s
-            )
-        """, (setor_id,))
-
-        # Depois, remover funções associadas a este setor
-        cursor.execute("DELETE FROM funcao WHERE setor_id = %s", (setor_id,))
-
-        # Finalmente, remover o setor
-        cursor.execute("DELETE FROM setores WHERE id = %s", (setor_id,))
-        conn.commit()
-        if cursor.rowcount == 0:
-            return jsonify({"success": False, "message": "Setor não encontrado."}), 404
-        flash("Setor e suas funções/vínculos excluídos com sucesso!", "success")
-        return jsonify({"success": True, "message": "Setor excluído com sucesso!"}), 200
-    except Exception as e:
-        conn.rollback()
-        print(f"Erro ao excluir setor: {e}")
-        return jsonify({"success": False, "message": f"Erro ao excluir setor: {str(e)}"}), 500
-    finally:
-        conn.close()
-
-@app.route('/funcao/adicionar', methods=['POST'])
-@login_required
-def adicionar_funcao():
-    nome = request.form.get('nome')
-    setor_id = request.form.get('setor_id')
-
-    if not nome or not setor_id:
-        flash("Nome da função e setor são obrigatórios.", "danger")
-        return redirect(url_for('gerenciar_estrutura'))
-
-    # Normaliza o nome da função
-    nome_normalizado = nome.strip().lower()
-
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("INSERT INTO funcao (nome, setor_id) VALUES (%s, %s)", (nome_normalizado, setor_id))
-        conn.commit()
-        flash(f"Função '{nome}' adicionada com sucesso!", "success")
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
-        flash(f"A função '{nome}' já existe neste setor.", "warning")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao adicionar função: {str(e)}", "danger")
-    finally:
-        conn.close()
-    return redirect(url_for('gerenciar_estrutura'))
-
-@app.route('/funcao/editar/<int:funcao_id>', methods=['POST'])
-@login_required
-def editar_funcao(funcao_id):
-    novo_nome = request.form.get('nome')
-    novo_setor_id = request.form.get('setor_id')
-
-    if not novo_nome or not novo_setor_id:
-        flash("Nome da função e setor são obrigatórios.", "danger")
-        return redirect(url_for('gerenciar_estrutura'))
-
-    # Normaliza o nome da função
-    novo_nome_normalizado = novo_nome.strip().lower()
-
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("UPDATE funcao SET nome = %s, setor_id = %s WHERE id = %s", (novo_nome_normalizado, novo_setor_id, funcao_id))
-        conn.commit()
-        if cursor.rowcount == 0:
-            flash("Função não encontrada.", "danger")
-        else:
-            flash(f"Função atualizada para '{novo_nome}' com sucesso!", "success")
-    except psycopg2.errors.UniqueViolation:
-        conn.rollback()
-        flash(f"A função '{novo_nome}' já existe neste setor.", "warning")
-    except Exception as e:
-        conn.rollback()
-        flash(f"Erro ao editar função: {str(e)}", "danger")
-    finally:
-        conn.close()
-    return redirect(url_for('gerenciar_estrutura'))
-
-@app.route('/funcao/deletar/<int:funcao_id>', methods=['POST'])
-@login_required
-def deletar_funcao(funcao_id):
-    conn = conectar()
-    cursor = conn.cursor()
-    try:
-        # Remover vínculos de trabalhador com esta função
-        cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE funcao_id = %s", (funcao_id,))
-
-        # NOVO: Remover vínculos de cursos de ensino para trabalhadores que tinham esta função
-        # Mesma observação da função deletar_setor se aplica aqui.
-        cursor.execute("""
-            DELETE FROM trabalhador_curso_ensino
-            WHERE trabalhador_id IN (
-                SELECT t.id FROM trabalhador t
-                JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
-                WHERE tsf.funcao_id = %s
-            )
-        """, (funcao_id,))
-        
-        # Remover a função
-        cursor.execute("DELETE FROM funcao WHERE id = %s", (funcao_id,))
-        conn.commit()
-        if cursor.rowcount == 0:
-            return jsonify({"success": False, "message": "Função não encontrada."}), 404
-        flash("Função e seus vínculos excluídos com sucesso!", "success")
-        return jsonify({"success": True, "message": "Função excluída com sucesso!"}), 200
-    except Exception as e:
-        conn.rollback()
-        print(f"Erro ao excluir função: {e}")
-        return jsonify({"success": False, "message": f"Erro ao excluir função: {str(e)}"}), 500
-    finally:
-        conn.close()
-
-if __name__ == '__main__':
-    app.run(debug=True)
