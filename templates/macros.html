@@ -176,7 +176,7 @@
     <h4>Cursos de Ensino</h4>
     <div class="mb-3">
         <label for="cursos_ensino" class="form-label">Selecione os Cursos:</label>
-        <select name="cursos_ensino[]" id="cursos_ensino" class="form-select" multiple style="max-height: 200px; overflow-y: auto;">
+        <select name="cursos_ensino[]" id="cursos_ensino" class="form-select w-50" multiple size="5" style="overflow-y: auto; min-width: 300px;">
             {% for curso_id, curso_nome in cursos_disponiveis %}
                 <option value="{{ curso_id }}"
                     {% if curso_id in cursos_selecionados_ids %}selected{% endif %}>
