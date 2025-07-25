@@ -48,7 +48,10 @@
         );
 
         // Inicializa os vínculos existentes (importante para que o listener de mudança de função seja aplicado)
-        document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(vinculo, {{ setores | tojson }}));
+        document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(
+            vinculo, 
+            {{ setores | tojson }}
+        ));
 
         // Validação do CPF ao perder o foco
         if (cpfInput && cpfErro) {
@@ -264,7 +267,10 @@
             </div>
         `;
         container.appendChild(div);
-        aplicarEventosVinculo(div, {{ setores | tojson }}); // Chame a versão modificada do aplicarEventosVinculo
+        aplicarEventosVinculo(
+            div, 
+            {{ setores | tojson }}
+        ); // Chame a versão modificada do aplicarEventosVinculo
     }
 </script>
 {% endblock %}
