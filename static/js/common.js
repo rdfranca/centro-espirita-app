@@ -1,26 +1,21 @@
 // common.js
 
+// CPF, CEP e Senha (mesmos de antes)
 function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g, '');
     if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
 
     let soma = 0;
-    for (let i = 0; i < 9; i++) {
-        soma += parseInt(cpf.charAt(i)) * (10 - i);
-    }
+    for (let i = 0; i < 9; i++) soma += parseInt(cpf.charAt(i)) * (10 - i);
     let resto = (soma * 10) % 11;
     if (resto === 10 || resto === 11) resto = 0;
     if (resto !== parseInt(cpf.charAt(9))) return false;
 
     soma = 0;
-    for (let i = 0; i < 10; i++) {
-        soma += parseInt(cpf.charAt(i)) * (11 - i);
-    }
+    for (let i = 0; i < 10; i++) soma += parseInt(cpf.charAt(i)) * (11 - i);
     resto = (soma * 10) % 11;
     if (resto === 10 || resto === 11) resto = 0;
-    if (resto !== parseInt(cpf.charAt(10))) return false;
-
-    return true;
+    return resto === parseInt(cpf.charAt(10));
 }
 
 function aplicarMascaraCPF(campo) {
@@ -32,8 +27,7 @@ function aplicarMascaraCPF(campo) {
             this.value = value.replace(/(\d{3})(\d{3})(\d{0,3})/, "$1.$2.$3");
         else if (value.length > 3)
             this.value = value.replace(/(\d{3})(\d{0,3})/, "$1.$2");
-        else
-            this.value = value;
+        else this.value = value;
     });
 }
 
@@ -42,43 +36,28 @@ function aplicarMascaraCEP(campo) {
         let value = this.value.replace(/\D/g, '').slice(0, 8);
         if (value.length > 5)
             this.value = value.replace(/(\d{5})(\d{0,3})/, "$1-$2");
-        else
-            this.value = value;
+        else this.value = value;
     });
 }
 
 function togglePasswordVisibility(input, button) {
-    if (input.type === 'password') {
-        input.type = 'text';
-        button.innerHTML = '🙈';
-    } else {
-        input.type = 'password';
-        button.innerHTML = '👁️';
-    }
+    input.type = input.type === 'password' ? 'text' : 'password';
+    button.innerHTML = input.type === 'text' ? '🙈' : '👁️';
 }
 
 function generateStrongPassword(length) {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+~`|}{[]:;?><,./-=";
-    let password = "";
-
     const types = [
         "abcdefghijklmnopqrstuvwxyz",
         "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         "0123456789",
         "!@#$%^&*()_+~`|}{[]:;?><,./-="
     ];
-
-    for (let i = 0; i < types.length; i++) {
-        password += getRandomChar(types[i]);
-    }
-
+    let password = types.map(getRandomChar).join('');
     for (let i = types.length; i < length; i++) {
         password += getRandomChar(charset);
     }
-
-    password = password.split('').sort(() => 0.5 - Math.random()).join('');
-
-    return password;
+    return password.split('').sort(() => 0.5 - Math.random()).join('');
 }
 
 function getRandomChar(charset) {
@@ -94,56 +73,69 @@ function atualizarDiasDaSemanaHidden(vinculoDiv) {
     }
 }
 
-// NOVO: Função para controlar a visibilidade do container de cursos
-// Agora recebe idSetorEnsino e funcaoSetorMap para fazer a verificação baseada no SETOR
-function setupCursosEnsinoVisibility(vinculosContainerId, cursosEnsinoContainerId, idSetorEnsino, funcaoSetorMap) {
-    const vinculosContainer = document.getElementById(vinculosContainerId);
-    const cursosEnsinoContainer = document.getElementById(cursosEnsinoContainerId);
+// Variáveis globais para controlar a exibição de cursos
+let globalFuncaoSetorMap = {};
+let globalIdSetorEnsino = null;
+let globalCursosEnsinoContainer = null;
+let globalVinculosContainer = null;
 
-    if (!vinculosContainer || !cursosEnsinoContainer) {
-        console.warn("Containers de vínculos ou cursos de ensino não encontrados. Verifique os IDs.");
-        return;
-    }
+// Tornada global
+function checkSetorEnsinoVisibility() {
+    let setorEnsinoSelected = false;
+    globalVinculosContainer.querySelectorAll('.funcao').forEach(selectFuncao => {
+        const selectedFuncaoId = parseInt(selectFuncao.value);
+        if (globalFuncaoSetorMap[selectedFuncaoId] === globalIdSetorEnsino) {
+            setorEnsinoSelected = true;
+        }
+    });
 
-    function checkSetorEnsinoVisibility() { // RENOMEADA para refletir a verificação por SETOR
-        let setorEnsinoSelected = false;
-        vinculosContainer.querySelectorAll('.funcao').forEach(selectFuncao => {
-            const selectedFuncaoId = parseInt(selectFuncao.value);
-            // Verifica se a função selecionada existe no nosso mapa e se o setor dela é o 'Ensino'
-            if (funcaoSetorMap[selectedFuncaoId] === idSetorEnsino) {
-                setorEnsinoSelected = true;
-            }
-        });
-
-        if (setorEnsinoSelected) {
-            cursosEnsinoContainer.style.display = 'block'; // Mostra o container de cursos
-        } else {
-            cursosEnsinoContainer.style.display = 'none';  // Oculta o container de cursos
-            // Opcional: Desmarcar todos os cursos se nenhuma função do setor ensino estiver selecionada
-            let selectCursos = cursosEnsinoContainer.querySelector('select[name="cursos_ensino[]"]');
+    if (globalCursosEnsinoContainer) {
+        globalCursosEnsinoContainer.style.display = setorEnsinoSelected ? 'block' : 'none';
+        if (!setorEnsinoSelected) {
+            let selectCursos = globalCursosEnsinoContainer.querySelector('select[name="cursos_ensino[]"]');
             if (selectCursos) {
-                Array.from(selectCursos.options).forEach(option => {
-                    option.selected = false;
-                });
+                Array.from(selectCursos.options).forEach(option => option.selected = false);
             }
         }
     }
+}
 
-    // Chama a verificação inicial para o carregamento da página
+// Atualizada com escuta de mudanças no SETOR também
+function setupCursosEnsinoVisibility(vinculosContainerId, cursosEnsinoContainerId, idSetorEnsino, funcaoSetorMap) {
+    globalVinculosContainer = document.getElementById(vinculosContainerId);
+    globalCursosEnsinoContainer = document.getElementById(cursosEnsinoContainerId);
+    globalIdSetorEnsino = idSetorEnsino;
+    globalFuncaoSetorMap = funcaoSetorMap;
+
+    if (!globalVinculosContainer || !globalCursosEnsinoContainer) {
+        console.warn("Containers de vínculos ou cursos de ensino não encontrados.");
+        return;
+    }
+
     checkSetorEnsinoVisibility();
 
-    // A função aplicarEventosVinculo (definida abaixo) será responsável por adicionar o listener de mudança de função.
+    // Adiciona escuta para mudanças de SETOR também, com pequeno delay para esperar o fetch
+    globalVinculosContainer.querySelectorAll('.setor').forEach(selectSetor => {
+        selectSetor.addEventListener('change', () => {
+            setTimeout(() => {
+                if (typeof checkSetorEnsinoVisibility === 'function') {
+                    checkSetorEnsinoVisibility();
+                }
+            }, 300);
+        });
+    });
+
+    globalVinculosContainer.addEventListener('change', checkSetorEnsinoVisibility);
 }
 
 
-// Função aplicarEventosVinculo (Completa e Única definição global)
+// aplicarEventosVinculo completa
 function aplicarEventosVinculo(vinculo, setoresData) {
     const selectSetor = vinculo.querySelector('select[name="setores[]"]');
     const selectFuncao = vinculo.querySelector('select[name="funcoes[]"]');
     const selectDiasDaSemana = vinculo.querySelector('.dias-da-semana-select');
     const funcaoSelecionada = selectFuncao ? selectFuncao.getAttribute('data-selected') : null;
 
-    // Popula setores se necessário (para novos blocos de vínculo)
     if (selectSetor && selectSetor.options.length <= 1 && setoresData) {
         setoresData.forEach(item => {
             const opt = document.createElement('option');
@@ -171,8 +163,6 @@ function aplicarEventosVinculo(vinculo, setoresData) {
                     }
                     selectFuncao.appendChild(opt);
                 });
-                // NOVO: Após carregar as funções, reavalia a visibilidade dos cursos
-                // Chama a função de checagem global se ela estiver disponível
                 if (typeof checkSetorEnsinoVisibility === 'function') {
                     checkSetorEnsinoVisibility();
                 }
@@ -185,16 +175,13 @@ function aplicarEventosVinculo(vinculo, setoresData) {
             carregarFuncoes(this.value);
         });
 
-        // Carrega funções iniciais para o modo de edição
         if (selectSetor.value) {
             carregarFuncoes(selectSetor.value, funcaoSelecionada);
         }
     }
 
-    // NOVO: Adiciona o listener para verificar a visibilidade dos cursos quando a função muda
     if (selectFuncao) {
         selectFuncao.addEventListener('change', () => {
-            // Chama a função de checagem global se ela estiver disponível
             if (typeof checkSetorEnsinoVisibility === 'function') {
                 checkSetorEnsinoVisibility();
             }
