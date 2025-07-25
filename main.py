@@ -158,3 +158,8 @@ def buscar():
     resultados = list(trabalhadores_agrupados.values())
     conn.close()
     return render_template("resultado.html", resultados=resultados)
+
+@app.route('/editar/<int:trabalhador_id>', methods=['GET', 'POST'])
+@login_required
+def editar(trabalhador_id):
+    return render_template("editar.html", trabalhador_id=trabalhador_id)
