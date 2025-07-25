@@ -105,13 +105,16 @@ def buscar():
 
     if nome_busca:
         # 1. Buscar todos os trabalhadores que correspondem ao critério de busca
-        # Não faça JOINs aqui que possam duplicar as linhas do trabalhador
+        # Adicionado DISTINCT ON (t.id) para garantir que cada trabalhador apareça apenas uma vez,
+        # mesmo que haja múltiplas entradas de endereço para o mesmo trabalhador (o que seria incomum).
+        # ORDER BY t.id é necessário para usar DISTINCT ON.
         cursor.execute("""
-            SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
+            SELECT DISTINCT ON (t.id) t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
                    e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email
             FROM trabalhador t
             LEFT JOIN endereco e ON t.id = e.trabalhador_id
             WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
+            ORDER BY t.id
         """, (f"%{nome_busca}%", f"%{nome_busca}%"))
         trabalhadores_raw = cursor.fetchall()
 
