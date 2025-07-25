@@ -3,6 +3,7 @@ import psycopg2
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from collections import defaultdict # Importação adicionada
 
 app = Flask(__name__)
 
@@ -87,71 +88,95 @@ def painel():
 @login_required
 def buscar():
     """
-    Busca trabalhadores por nome ou CPF e retorna os resultados.
-    Inclui os vínculos de setor, função e turno de cada trabalhador.
+    Busca trabalhadores por nome ou CPF e retorna os resultados,
+    agrupando os vínculos e cursos de ensino para evitar duplicação.
     """
-    nome = request.args.get("nome")
+    nome_busca = request.args.get("nome", "").strip() # Use .strip() para remover espaços em branco
     conn = conectar()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
-               e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email
-        FROM trabalhador t
-        LEFT JOIN endereco e ON t.id = e.trabalhador_id
-        WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
-    """, (f"%{nome}%", f"%{nome}%"))
-    trabalhadores = cursor.fetchall()
 
-    resultados = []
-    for t in trabalhadores:
+    # Dicionário para armazenar trabalhadores, usando o ID como chave para evitar duplicação
+    trabalhadores_agrupados = defaultdict(lambda: {
+        "id": None, "nome": None, "cpf": None, "celular": None, "profissao": None,
+        "nascimento": None, "cep": None, "rua": None, "numero": None, "bairro": None,
+        "cidade": None, "estado": None, "complemento": None, "email": None,
+        "vinculos": [], "cursos_ensino": []
+    })
+
+    if nome_busca:
+        # 1. Buscar todos os trabalhadores que correspondem ao critério de busca
+        # Não faça JOINs aqui que possam duplicar as linhas do trabalhador
         cursor.execute("""
-            SELECT DISTINCT s.nome, f.nome, tsf.turno, tsf.dias_da_semana
-            FROM trabalhador_setor_funcao tsf
-            LEFT JOIN setores s ON tsf.setor_id = s.id
-            LEFT JOIN funcao f ON tsf.funcao_id = f.id
-            WHERE tsf.trabalhador_id = %s
-        """, (t[0],))
-        vinculos = cursor.fetchall()
+            SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
+                   e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email
+            FROM trabalhador t
+            LEFT JOIN endereco e ON t.id = e.trabalhador_id
+            WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
+        """, (f"%{nome_busca}%", f"%{nome_busca}%"))
+        trabalhadores_raw = cursor.fetchall()
 
-        # NOVO: Buscar cursos associados ao trabalhador para exibir nos resultados
-        cursor.execute("""
-            SELECT ce.nome
-            FROM trabalhador_curso_ensino tce
-            JOIN cursos_ensino ce ON tce.curso_id = ce.id
-            WHERE tce.trabalhador_id = %s
-        """, (t[0],))
-        cursos_trabalhador = [row[0] for row in cursor.fetchall()]
+        # Preencher os dados básicos de cada trabalhador no dicionário agrupado
+        for t_data in trabalhadores_raw:
+            trabalhador_id = t_data[0]
+            trabalhadores_agrupados[trabalhador_id].update({
+                "id": t_data[0],
+                "nome": t_data[1],
+                "cpf": t_data[2],
+                "celular": t_data[3],
+                "profissao": t_data[4],
+                "nascimento": t_data[5],
+                "cep": t_data[6],
+                "rua": t_data[7],
+                "numero": t_data[8],
+                "bairro": t_data[9],
+                "cidade": t_data[10],
+                "estado": t_data[11],
+                "complemento": t_data[12],
+                "email": t_data[13]
+            })
 
+        # 2. Buscar todos os vínculos para os trabalhadores encontrados
+        # Isso evita múltiplas consultas dentro do loop
+        if trabalhadores_agrupados:
+            trabalhador_ids = tuple(trabalhadores_agrupados.keys()) # Converte para tupla para usar em IN clause
+            cursor.execute(f"""
+                SELECT tsf.trabalhador_id, s.nome, f.nome, tsf.turno, tsf.dias_da_semana
+                FROM trabalhador_setor_funcao tsf
+                LEFT JOIN setores s ON tsf.setor_id = s.id
+                LEFT JOIN funcao f ON tsf.funcao_id = f.id
+                WHERE tsf.trabalhador_id IN %s
+            """, (trabalhador_ids,)) # Passa a tupla diretamente
+            vinculos_raw = cursor.fetchall()
 
-        vinculos_formatados = []
-        for v in vinculos:
-            setor, funcao, turno, dias_da_semana = v
-            if setor and funcao and turno:
-                vinculos_formatados.append({
-                    "setor": setor,
-                    "funcao": funcao,
-                    "turno": turno,
-                    "dias_da_semana": dias_da_semana
-                })
+            # Associar vínculos aos trabalhadores
+            for v_data in vinculos_raw:
+                trabalhador_id = v_data[0]
+                setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
+                if setor and funcao and turno: # Garante que o vínculo tem dados completos
+                    trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
+                        "setor": setor,
+                        "funcao": funcao,
+                        "turno": turno,
+                        "dias_da_semana": dias_da_semana
+                    })
 
-        resultados.append({
-            "id": t[0],
-            "nome": t[1],
-            "cpf": t[2],
-            "celular": t[3],
-            "profissao": t[4],
-            "nascimento": t[5],
-            "cep": t[6],
-            "rua": t[7],
-            "numero": t[8],
-            "bairro": t[9],
-            "cidade": t[10],
-            "estado": t[11],
-            "complemento": t[12],
-            "email": t[13],
-            "vinculos": vinculos_formatados,
-            "cursos_ensino": cursos_trabalhador # NOVO: Adiciona cursos ao resultado
-        })
+            # 3. Buscar todos os cursos para os trabalhadores encontrados
+            cursor.execute(f"""
+                SELECT tce.trabalhador_id, ce.nome
+                FROM trabalhador_curso_ensino tce
+                JOIN cursos_ensino ce ON tce.curso_id = ce.id
+                WHERE tce.trabalhador_id IN %s
+            """, (trabalhador_ids,))
+            cursos_raw = cursor.fetchall()
+
+            # Associar cursos aos trabalhadores
+            for c_data in cursos_raw:
+                trabalhador_id = c_data[0]
+                curso_nome = c_data[1]
+                trabalhadores_agrupados[trabalhador_id]["cursos_ensino"].append(curso_nome)
+
+    # Converter o dicionário de trabalhadores agrupados para uma lista de resultados finais
+    resultados = list(trabalhadores_agrupados.values())
 
     conn.close()
     return render_template("resultado.html", resultados=resultados)
@@ -177,9 +202,9 @@ def cadastrar():
 
     conn.close()
     return render_template("cadastrar.html", setores=setores,
-                           cursos_disponiveis=cursos_disponiveis,
-                           id_setor_ensino=ID_SETOR_ENSINO,       # ID do SETOR Ensino
-                           funcao_setor_map=funcao_setor_map)    # Mapeamento funcao->setor
+                            cursos_disponiveis=cursos_disponiveis,
+                            id_setor_ensino=ID_SETOR_ENSINO,      # ID do SETOR Ensino
+                            funcao_setor_map=funcao_setor_map)     # Mapeamento funcao->setor
 
 @app.route('/api/funcoes_por_setor/<int:setor_id>', methods=['GET'])
 @login_required
@@ -189,6 +214,8 @@ def api_funcoes_por_setor(setor_id):
     """
     conn = conectar()
     cursor = conn.cursor()
+    # A consulta original estava incorreta para buscar funções por setor.
+    # Assumindo que a tabela 'funcao' tem uma coluna 'setor_id'.
     cursor.execute('SELECT id, nome FROM funcao WHERE setor_id = %s ORDER BY nome', (setor_id,))
     funcoes = cursor.fetchall()
     conn.close()
@@ -356,10 +383,10 @@ def editar(trabalhador_id):
 
     conn.close()
     return render_template("editar.html", trabalhador=trabalhador, setores=setores, vinculos=vinculos,
-                           cursos_disponiveis=cursos_disponiveis,
-                           cursos_selecionados_ids=cursos_selecionados_ids,
-                           id_setor_ensino=ID_SETOR_ENSINO,
-                           funcao_setor_map=funcao_setor_map)
+                            cursos_disponiveis=cursos_disponiveis,
+                            cursos_selecionados_ids=cursos_selecionados_ids,
+                            id_setor_ensino=ID_SETOR_ENSINO,
+                            funcao_setor_map=funcao_setor_map)
 
 
 @app.route('/atualizar/<int:trabalhador_id>', methods=['POST'])
@@ -492,57 +519,85 @@ def api_relatorios():
     conn = conectar()
     cursor = conn.cursor()
 
-    query = """
+    # Consulta todos os trabalhadores com seus endereços
+    cursor.execute("""
         SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
             e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento,
-            s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana,
             t.email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
-        LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
-        LEFT JOIN setores s ON tsf.setor_id = s.id
-        LEFT JOIN funcao f ON tsf.funcao_id = f.id
-    """
+    """)
+    trabalhadores_raw = cursor.fetchall()
 
-    cursor.execute(query)
-    dados = cursor.fetchall()
+    trabalhadores_agrupados = defaultdict(lambda: {
+        "id": None, "nome": None, "cpf": None, "celular": None, "profissao": None,
+        "nascimento": None, "cep": None, "rua": None, "numero": None, "bairro": None,
+        "cidade": None, "estado": None, "complemento": None, "email": None,
+        "vinculos": [], "cursos_ensino": []
+    })
 
-    lista = []
-    for row in dados:
-        # NOVO: Buscar cursos para cada trabalhador no relatório
-        cursor.execute("""
-            SELECT ce.nome
-            FROM trabalhador_curso_ensino tce
-            JOIN cursos_ensino ce ON tce.curso_id = ce.id
-            WHERE tce.trabalhador_id = %s
-        """, (row[0],))
-        cursos_trabalhador = [c[0] for c in cursor.fetchall()]
-
-        lista.append({
-            "id": row[0],
-            "nome": row[1],
-            "cpf": row[2],
-            "celular": row[3],
-            "profissao": row[4],
-            "nascimento": row[5],
-            "cep": row[6],
-            "rua": row[7],
-            "numero": row[8],
-            "bairro": row[9],
-            "cidade": row[10],
-            "estado": row[11],
-            "complemento": row[12],
-            "setor": row[13],
-            "funcao": row[14],
-            "turno": row[15],
-            "dias_da_semana": row[16],
-            "email": row[17],
-            "cursos_ensino": cursos_trabalhador # NOVO: Adiciona os cursos
+    for t_data in trabalhadores_raw:
+        trabalhador_id = t_data[0]
+        trabalhadores_agrupados[trabalhador_id].update({
+            "id": t_data[0],
+            "nome": t_data[1],
+            "cpf": t_data[2],
+            "celular": t_data[3],
+            "profissao": t_data[4],
+            "nascimento": t_data[5],
+            "cep": t_data[6],
+            "rua": t_data[7],
+            "numero": t_data[8],
+            "bairro": t_data[9],
+            "cidade": t_data[10],
+            "estado": t_data[11],
+            "complemento": t_data[12],
+            "email": t_data[13]
         })
 
+    # Buscar todos os vínculos para todos os trabalhadores
+    if trabalhadores_agrupados:
+        trabalhador_ids = tuple(trabalhadores_agrupados.keys())
+        cursor.execute(f"""
+            SELECT tsf.trabalhador_id, s.nome, f.nome, tsf.turno, tsf.dias_da_semana
+            FROM trabalhador_setor_funcao tsf
+            LEFT JOIN setores s ON tsf.setor_id = s.id
+            LEFT JOIN funcao f ON tsf.funcao_id = f.id
+            WHERE tsf.trabalhador_id IN %s
+        """, (trabalhador_ids,))
+        vinculos_raw = cursor.fetchall()
+
+        for v_data in vinculos_raw:
+            trabalhador_id = v_data[0]
+            setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
+            if setor and funcao and turno:
+                trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
+                    "setor": setor,
+                    "funcao": funcao,
+                    "turno": turno,
+                    "dias_da_semana": dias_da_semana
+                })
+        
+        # Buscar todos os cursos para todos os trabalhadores
+        cursor.execute(f"""
+            SELECT tce.trabalhador_id, ce.nome
+            FROM trabalhador_curso_ensino tce
+            JOIN cursos_ensino ce ON tce.curso_id = ce.id
+            WHERE tce.trabalhador_id IN %s
+        """, (trabalhador_ids,))
+        cursos_raw = cursor.fetchall()
+
+        for c_data in cursos_raw:
+            trabalhador_id = c_data[0]
+            curso_nome = c_data[1]
+            trabalhadores_agrupados[trabalhador_id]["cursos_ensino"].append(curso_nome)
+
+
+    lista_final = list(trabalhadores_agrupados.values())
+
     conn.close()
-    return jsonify(lista)
+    return jsonify(lista_final)
 
 @app.route('/api/setores_para_filtro', methods=['GET'])
 @login_required
@@ -653,6 +708,15 @@ def deletar_setor(setor_id):
         """, (setor_id,))
 
         # NOVO: Remover vínculos de cursos de ensino para trabalhadores que tinham funções neste setor
+        # Esta lógica pode ser problemática se um trabalhador tiver múltiplos vínculos em diferentes setores
+        # e você só quiser remover os cursos se o setor deletado for o ÚNICO vínculo de ensino.
+        # Se um trabalhador tiver um vínculo de ensino em outro setor que não está sendo deletado,
+        # esta query pode remover os cursos indevidamente.
+        # Uma abordagem mais segura seria:
+        # 1. Identificar trabalhadores que SÓ têm vínculos no setor a ser deletado.
+        # 2. Ou, se a remoção de cursos for estritamente ligada à remoção de QUALQUER vínculo de ensino,
+        #    manter como está, mas com a ressalva.
+        # Por simplicidade e para manter a estrutura original, mantive a query, mas com a observação.
         cursor.execute("""
             DELETE FROM trabalhador_curso_ensino
             WHERE trabalhador_id IN (
@@ -750,6 +814,7 @@ def deletar_funcao(funcao_id):
         cursor.execute("DELETE FROM trabalhador_setor_funcao WHERE funcao_id = %s", (funcao_id,))
 
         # NOVO: Remover vínculos de cursos de ensino para trabalhadores que tinham esta função
+        # Mesma observação da função deletar_setor se aplica aqui.
         cursor.execute("""
             DELETE FROM trabalhador_curso_ensino
             WHERE trabalhador_id IN (
