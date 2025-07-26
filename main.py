@@ -161,7 +161,7 @@ def buscar():
             for setor_nome_key, info in setores_info.items():
                 trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
                     "setor": setor_nome_key.capitalize(), # Capitalize para exibição
-                    "funcao": ", ".join(sorted(list(info["funcoes"]))),
+                    "funcao": ", ".join(sorted(set([f[1] for f in info["funcoes"]]))),
                     "turno": ", ".join(sorted(list(info["turnos"]))),
                     "dias_da_semana": ", ".join(sorted(list(info["dias"])))
                 })
@@ -295,6 +295,8 @@ def inserir():
 
     cursos_selecionados = request.form.getlist("cursos_ensino[]") # Pega os cursos selecionados do formulário
 
+    
+
     try:
         cursor.execute("""
             INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao, email, senha_hash)
@@ -313,6 +315,8 @@ def inserir():
             funcao_id = funcoes[i]
             turno = turnos[i]
             dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
+
+            
 
             cursor.execute("""
                 INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
@@ -572,7 +576,7 @@ def api_relatorios():
             setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
             if setor and funcao and turno:
                 chave = setor.strip().lower()
-                vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add(funcao)
+                vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add((funcao_id, funcao))
                 vinculos_por_trabalhador[trabalhador_id][chave]["turnos"].add(turno)
                 if dias_da_semana:
                     vinculos_por_trabalhador[trabalhador_id][chave]["dias"].add(dias_da_semana)
