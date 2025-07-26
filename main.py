@@ -282,16 +282,11 @@ def inserir():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (trabalhador_id, cep, rua, numero, bairro, cidade, estado, complemento))
 
-        for i in range(len(setores)):
-            setor_id = setores[i]
-            funcao_id = funcoes[i]
-            turno = turnos[i]
-            dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
-
+        for setor_id, funcao_id, turno, dias_da_semana_str in zip(setores, funcoes, turnos, dias_da_semana_por_vinculo):
             cursor.execute("""
                 INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
+             """, (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana_str))
         
         # Inserir cursos de ensino selecionados para o trabalhador
         for curso_id in cursos_selecionados:
