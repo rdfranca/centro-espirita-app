@@ -576,7 +576,9 @@ def api_relatorios():
             setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
             if setor and funcao and turno:
                 chave = setor.strip().lower()
-                vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add((funcao_id, funcao))
+                if funcao:
+                    nome_funcao = funcao.strip().capitalize()
+                    vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add((funcao_id, nome_funcao))
                 vinculos_por_trabalhador[trabalhador_id][chave]["turnos"].add(turno)
                 if dias_da_semana:
                     vinculos_por_trabalhador[trabalhador_id][chave]["dias"].add(dias_da_semana)
