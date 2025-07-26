@@ -3,7 +3,6 @@ import psycopg2
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-from collections import defaultdict # Import defaultdict
 
 app = Flask(__name__)
 
@@ -89,14 +88,11 @@ def painel():
 def buscar():
     """
     Busca trabalhadores por nome ou CPF e retorna os resultados.
-    Inclui os vínculos de setor, função e turno de cada trabalhador,
-    agrupando funções, turnos e dias da semana por setor para evitar duplicação.
+    Inclui os vínculos de setor, função e turno de cada trabalhador.
     """
     nome = request.args.get("nome")
     conn = conectar()
     cursor = conn.cursor()
-
-    # 1. Buscar trabalhadores
     cursor.execute("""
         SELECT t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
                e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento, t.email
@@ -104,11 +100,41 @@ def buscar():
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
         WHERE t.nome ILIKE %s OR t.cpf ILIKE %s
     """, (f"%{nome}%", f"%{nome}%"))
-    trabalhadores_raw = cursor.fetchall()
+    trabalhadores = cursor.fetchall()
 
-    trabalhadores_agrupados = {}
-    for t in trabalhadores_raw:
-        trabalhadores_agrupados[t[0]] = {
+    resultados = []
+    for t in trabalhadores:
+        cursor.execute("""
+            SELECT DISTINCT s.nome, f.nome, tsf.turno, tsf.dias_da_semana
+            FROM trabalhador_setor_funcao tsf
+            LEFT JOIN setores s ON tsf.setor_id = s.id
+            LEFT JOIN funcao f ON tsf.funcao_id = f.id
+            WHERE tsf.trabalhador_id = %s
+        """, (t[0],))
+        vinculos = cursor.fetchall()
+
+        # NOVO: Buscar cursos associados ao trabalhador para exibir nos resultados
+        cursor.execute("""
+            SELECT ce.nome
+            FROM trabalhador_curso_ensino tce
+            JOIN cursos_ensino ce ON tce.curso_id = ce.id
+            WHERE tce.trabalhador_id = %s
+        """, (t[0],))
+        cursos_trabalhador = [row[0] for row in cursor.fetchall()]
+
+
+        vinculos_formatados = []
+        for v in vinculos:
+            setor, funcao, turno, dias_da_semana = v
+            if setor and funcao and turno:
+                vinculos_formatados.append({
+                    "setor": setor,
+                    "funcao": funcao,
+                    "turno": turno,
+                    "dias_da_semana": dias_da_semana
+                })
+
+        resultados.append({
             "id": t[0],
             "nome": t[1],
             "cpf": t[2],
@@ -123,64 +149,12 @@ def buscar():
             "estado": t[11],
             "complemento": t[12],
             "email": t[13],
-            "vinculos": [],
-            "cursos_ensino": []
-        }
-
-    # 2. Se houver trabalhadores, buscar seus vínculos e cursos
-    if trabalhadores_agrupados:
-        trabalhador_ids = tuple(trabalhadores_agrupados.keys())
-
-        # Buscar vínculos (setor, função, turno, dias_da_semana)
-        cursor.execute(f"""
-            SELECT tsf.trabalhador_id, s.nome, f.nome, tsf.turno, tsf.dias_da_semana
-            FROM trabalhador_setor_funcao tsf
-            LEFT JOIN setores s ON tsf.setor_id = s.id
-            LEFT JOIN funcao f ON tsf.funcao_id = f.id
-            WHERE tsf.trabalhador_id IN %s
-        """, (trabalhador_ids,))
-        vinculos_raw = cursor.fetchall()
-
-        # Agrupar por trabalhador e setor
-        vinculos_por_trabalhador = defaultdict(lambda: defaultdict(lambda: {
-            "funcoes": set(), "turnos": set(), "dias": set()
-        }))
-
-        for v_data in vinculos_raw:
-            trabalhador_id = v_data[0]
-            setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
-            if setor and funcao and turno:
-                chave = setor.strip().lower() # Usar nome do setor como chave
-                vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add(funcao)
-                vinculos_por_trabalhador[trabalhador_id][chave]["turnos"].add(turno)
-                if dias_da_semana:
-                    vinculos_por_trabalhador[trabalhador_id][chave]["dias"].add(dias_da_semana)
-
-        # Adiciona os vínculos agrupados no dicionário final
-        for trabalhador_id, setores_info in vinculos_por_trabalhador.items():
-            for setor_nome_key, info in setores_info.items():
-                trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
-                    "setor": setor_nome_key.capitalize(), # Capitalize para exibição
-                    "funcao": ", ".join(sorted(set([f[1] for f in info["funcoes"]]))),
-                    "turno": ", ".join(sorted(list(info["turnos"]))),
-                    "dias_da_semana": ", ".join(sorted(list(info["dias"])))
-                })
-
-        # Buscar cursos associados aos trabalhadores
-        cursor.execute(f"""
-            SELECT tce.trabalhador_id, ce.nome
-            FROM trabalhador_curso_ensino tce
-            JOIN cursos_ensino ce ON tce.curso_id = ce.id
-            WHERE tce.trabalhador_id IN %s
-        """, (trabalhador_ids,))
-        cursos_raw = cursor.fetchall()
-
-        for c_data in cursos_raw:
-            trabalhador_id, curso_nome = c_data[0], c_data[1]
-            trabalhadores_agrupados[trabalhador_id]["cursos_ensino"].append(curso_nome)
+            "vinculos": vinculos_formatados,
+            "cursos_ensino": cursos_trabalhador # NOVO: Adiciona cursos ao resultado
+        })
 
     conn.close()
-    return render_template("resultado.html", resultados=list(trabalhadores_agrupados.values()))
+    return render_template("resultado.html", resultados=resultados)
 
 @app.route("/cadastrar")
 @login_required
@@ -295,8 +269,6 @@ def inserir():
 
     cursos_selecionados = request.form.getlist("cursos_ensino[]") # Pega os cursos selecionados do formulário
 
-    
-
     try:
         cursor.execute("""
             INSERT INTO trabalhador (nome, cpf, data_nascimento, celular, profissao, email, senha_hash)
@@ -315,8 +287,6 @@ def inserir():
             funcao_id = funcoes[i]
             turno = turnos[i]
             dias_da_semana_str = dias_da_semana_por_vinculo[i] if i < len(dias_da_semana_por_vinculo) else ""
-
-            
 
             cursor.execute("""
                 INSERT INTO trabalhador_setor_funcao (trabalhador_id, setor_id, funcao_id, turno, dias_da_semana)
@@ -526,89 +496,53 @@ def api_relatorios():
         SELECT
             t.id, t.nome, t.cpf, t.celular, t.profissao, t.data_nascimento,
             e.cep, e.rua, e.numero, e.bairro, e.cidade, e.estado, e.complemento,
+            s.nome AS setor, f.nome AS funcao, tsf.turno, tsf.dias_da_semana,
             t.email
         FROM trabalhador t
         LEFT JOIN endereco e ON t.id = e.trabalhador_id
+        LEFT JOIN trabalhador_setor_funcao tsf ON t.id = tsf.trabalhador_id
+        LEFT JOIN setores s ON tsf.setor_id = s.id
+        LEFT JOIN funcao f ON tsf.funcao_id = f.id
     """
 
     cursor.execute(query)
-    trabalhadores_raw = cursor.fetchall()
+    dados = cursor.fetchall()
 
-    trabalhadores_agrupados = {}
-    for t in trabalhadores_raw:
-        trabalhadores_agrupados[t[0]] = {
-            "id": t[0],
-            "nome": t[1],
-            "cpf": t[2],
-            "celular": t[3],
-            "profissao": t[4],
-            "nascimento": t[5],
-            "cep": t[6],
-            "rua": t[7],
-            "numero": t[8],
-            "bairro": t[9],
-            "cidade": t[10],
-            "estado": t[11],
-            "complemento": t[12],
-            "email": t[13],
-            "vinculos": [],
-            "cursos_ensino": []
-        }
-    
-    if trabalhadores_agrupados:
-        trabalhador_ids = tuple(trabalhadores_agrupados.keys())
-
-        cursor.execute(f"""
-            SELECT tsf.trabalhador_id, s.nome, f.nome, tsf.turno, tsf.dias_da_semana
-            FROM trabalhador_setor_funcao tsf
-            LEFT JOIN setores s ON tsf.setor_id = s.id
-            LEFT JOIN funcao f ON tsf.funcao_id = f.id
-            WHERE tsf.trabalhador_id IN %s
-        """, (trabalhador_ids,))
-        vinculos_raw = cursor.fetchall()
-
-        vinculos_por_trabalhador = defaultdict(lambda: defaultdict(lambda: {
-            "funcoes": set(), "turnos": set(), "dias": set()
-        }))
-
-        for v_data in vinculos_raw:
-            trabalhador_id = v_data[0]
-            setor, funcao, turno, dias_da_semana = v_data[1], v_data[2], v_data[3], v_data[4]
-            if setor and funcao and turno:
-                chave = setor.strip().lower()
-                if funcao:
-                    nome_funcao = funcao.strip().capitalize()
-                    vinculos_por_trabalhador[trabalhador_id][chave]["funcoes"].add((funcao_id, nome_funcao))
-                vinculos_por_trabalhador[trabalhador_id][chave]["turnos"].add(turno)
-                if dias_da_semana:
-                    vinculos_por_trabalhador[trabalhador_id][chave]["dias"].add(dias_da_semana)
-
-        for trabalhador_id, setores_info in vinculos_por_trabalhador.items():
-            for setor_nome_key, info in setores_info.items():
-             # Elimina nomes duplicados mesmo que os IDs sejam diferentes
-             funcoes_unicas = sorted(set(f[1] for f in info["funcoes"]))
-             trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
-                 "setor": setor_nome_key.capitalize(),
-                "funcao": ", ".join(funcoes_unicas),
-                "turno": ", ".join(sorted(info["turnos"])),
-                 "dias_da_semana": ", ".join(sorted(info["dias"]))
-        })
-
-        cursor.execute(f"""
-            SELECT tce.trabalhador_id, ce.nome
+    lista = []
+    for row in dados:
+        # NOVO: Buscar cursos para cada trabalhador no relatório
+        cursor.execute("""
+            SELECT ce.nome
             FROM trabalhador_curso_ensino tce
             JOIN cursos_ensino ce ON tce.curso_id = ce.id
-            WHERE tce.trabalhador_id IN %s
-        """, (trabalhador_ids,))
-        cursos_raw = cursor.fetchall()
+            WHERE tce.trabalhador_id = %s
+        """, (row[0],))
+        cursos_trabalhador = [c[0] for c in cursor.fetchall()]
 
-        for c_data in cursos_raw:
-            trabalhador_id, curso_nome = c_data[0], c_data[1]
-            trabalhadores_agrupados[trabalhador_id]["cursos_ensino"].append(curso_nome)
-
+        lista.append({
+            "id": row[0],
+            "nome": row[1],
+            "cpf": row[2],
+            "celular": row[3],
+            "profissao": row[4],
+            "nascimento": row[5],
+            "cep": row[6],
+            "rua": row[7],
+            "numero": row[8],
+            "bairro": row[9],
+            "cidade": row[10],
+            "estado": row[11],
+            "complemento": row[12],
+            "setor": row[13],
+            "funcao": row[14],
+            "turno": row[15],
+            "dias_da_semana": row[16],
+            "email": row[17],
+            "cursos_ensino": cursos_trabalhador # NOVO: Adiciona os cursos
+        })
 
     conn.close()
-    return jsonify(list(trabalhadores_agrupados.values()))
+    return jsonify(lista)
 
 @app.route('/api/setores_para_filtro', methods=['GET'])
 @login_required
