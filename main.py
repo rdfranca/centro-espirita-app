@@ -583,12 +583,14 @@ def api_relatorios():
 
         for trabalhador_id, setores_info in vinculos_por_trabalhador.items():
             for setor_nome_key, info in setores_info.items():
-                trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
-                    "setor": setor_nome_key.capitalize(),
-                    "funcao": ", ".join(sorted(list(info["funcoes"]))),
-                    "turno": ", ".join(sorted(list(info["turnos"]))),
-                    "dias_da_semana": ", ".join(sorted(list(info["dias"])))
-                })
+             # Elimina nomes duplicados mesmo que os IDs sejam diferentes
+             funcoes_unicas = sorted(set(f[1] for f in info["funcoes"]))
+             trabalhadores_agrupados[trabalhador_id]["vinculos"].append({
+                 "setor": setor_nome_key.capitalize(),
+                "funcao": ", ".join(funcoes_unicas),
+                "turno": ", ".join(sorted(info["turnos"])),
+                 "dias_da_semana": ", ".join(sorted(info["dias"]))
+        })
 
         cursor.execute(f"""
             SELECT tce.trabalhador_id, ce.nome
