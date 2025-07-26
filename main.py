@@ -266,7 +266,8 @@ def inserir():
     funcoes = request.form.getlist("funcoes[]")
     turnos = request.form.getlist("turnos[]")
     dias_da_semana_por_vinculo = request.form.getlist("dias_da_semana[]")
-
+    print("VÍNCULOS ENVIADOS:")
+    print(list(zip(setores, funcoes, turnos, dias_da_semana_por_vinculo)))
     cursos_selecionados = request.form.getlist("cursos_ensino[]") # Pega os cursos selecionados do formulário
 
     try:
