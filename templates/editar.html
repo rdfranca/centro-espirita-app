@@ -47,6 +47,13 @@
             {{ funcao_setor_map | tojson }}
         );
 
+        if ({{ cursos_selecionados_ids|length }} > 0) {
+             const containerCursos = document.getElementById('cursos-ensino-container');
+             if (containerCursos) {
+                 containerCursos.style.display = 'block';
+             }
+        }      
+
         // Inicializa os vínculos existentes (importante para que o listener de mudança de função seja aplicado)
         document.querySelectorAll('.vinculo').forEach(vinculo => aplicarEventosVinculo(
             vinculo, 
