@@ -36,7 +36,7 @@
         <header class="text-center">
             <img src="/static/logo.png" alt="Logo">
         </header>
-
+        {% if 'usuario' in session %}
         <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">Menu</a>
@@ -66,7 +66,7 @@
                 </div>
             </div>
         </nav>
-
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}

@@ -157,7 +157,7 @@ def buscar():
     return render_template("resultado.html", resultados=resultados)
 
 @app.route("/cadastrar")
-@login_required
+#@login_required
 def cadastrar():
     """
     Renderiza a página de cadastro de trabalhadores.
