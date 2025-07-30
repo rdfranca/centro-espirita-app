@@ -62,7 +62,7 @@ def login():
 
         if trabalhador_data and trabalhador_data[1] and check_password_hash(trabalhador_data[1], password):
             # Autenticação bem-sucedida
-            session['trabalhador_id'] = trabalhador_data[0]
+            session['usuario'] = trabalhador_data[0]
             flash("Login realizado com sucesso!", "success")
             return redirect(url_for('painel'))
         else:
