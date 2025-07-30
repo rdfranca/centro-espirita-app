@@ -3,6 +3,8 @@ import psycopg2
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 app = Flask(__name__)
 
@@ -231,6 +233,26 @@ def validar_cpf(cpf):
 
     return True
 
+def enviar_email_confirmacao(destinatario, nome):
+    mensagem = Mail(
+        from_email='ti@ensinounificadocre.com.br',  # ou um Gmail seu verificado
+        to_emails=destinatario,
+        subject='Cadastro no Centro Espírita confirmado',
+        html_content=f"""
+        <p>Olá, {nome}!</p>
+        <p>Seu cadastro foi realizado com sucesso em nosso sistema.</p>
+        <p>Seja muito bem-vindo(a) ao nosso Centro Espírita 🙏✨</p>
+        <p>Com carinho,<br>Equipe Luz do Consolador</p>
+        """
+    )
+
+    try:
+        sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+        response = sg.send(mensagem)
+        print(f"E-mail enviado com status {response.status_code}")
+    except Exception as e:
+        print(f"Erro ao enviar e-mail: {str(e)}")
+
 @app.route("/inserir", methods=["POST"])
 @login_required
 def inserir():
@@ -298,6 +320,7 @@ def inserir():
 
         conn.commit()
         flash("Trabalhador cadastrado com sucesso!", "success")
+        enviar_email_confirmacao(email, nome)
         return redirect(url_for('painel'))
     except Exception as e:
         conn.rollback()
