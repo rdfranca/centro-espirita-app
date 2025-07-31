@@ -1,0 +1,11 @@
+{% extends "base_login.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Esqueci minha senha</h3>
+  <form method="post">
+    <label>Email cadastrado</label>
+    <input type="email" name="email" required class="form-control mb-3">
+    <button class="btn btn-primary">Enviar e-mail de recuperação</button>
+  </form>
+</div>
+{% endblock %}

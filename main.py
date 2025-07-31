@@ -233,23 +233,25 @@ def validar_cpf(cpf):
 
     return True
 
-def enviar_email_confirmacao(destinatario, nome):
-    mensagem = Mail(
-        from_email='ti@ensinounificadocre.com.br',  # ou um Gmail seu verificado
-        to_emails=destinatario,
-        subject='Cadastro no Centro Espírita confirmado',
-        html_content=f"""
+def enviar_email_confirmacao(destinatario, nome, assunto='Cadastro no Centro Espírita confirmado', corpo=None):
+    if not corpo:
+        corpo = f"""
         <p>Olá, {nome}!</p>
         <p>Seu cadastro foi realizado com sucesso em nosso sistema.</p>
         <p>Seja muito bem-vindo(a) ao nosso Centro Espírita 🙏✨</p>
         <p>Com carinho,<br>Equipe Luz do Consolador</p>
         """
+
+    mensagem = Mail(
+        from_email='ti@ensinounificadocre.com.br',
+        to_emails=destinatario,
+        subject=assunto,
+        html_content=corpo
     )
 
     try:
         sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
-        response = sg.send(mensagem)
-        print(f"E-mail enviado com status {response.status_code}")
+        sg.send(mensagem)
     except Exception as e:
         print(f"Erro ao enviar e-mail: {str(e)}")
 
@@ -791,6 +793,65 @@ def deletar_funcao(funcao_id):
         return jsonify({"success": False, "message": f"Erro ao excluir função: {str(e)}"}), 500
     finally:
         conn.close()
+
+@app.route('/esqueci_senha', methods=['GET', 'POST'])
+def esqueci_senha():
+    if request.method == 'POST':
+        email = request.form.get('email')
+
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nome FROM trabalhador WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user:
+            token = str(uuid.uuid4())
+            reset_link = url_for('resetar_senha', token=token, _external=True)
+
+            # Salvar o token temporariamente (em produção use tabela ou Redis)
+            with open(f'tokens/{token}.txt', 'w') as f:
+                f.write(str(user[0]))
+
+            enviar_email_confirmacao(
+                email,
+                user[1],
+                assunto='Redefinição de Senha',
+                corpo=f"""
+                <p>Olá {user[1]},</p>
+                <p>Recebemos uma solicitação para redefinir sua senha.</p>
+                <p>Clique <a href='{reset_link}'>aqui</a> para criar uma nova senha.</p>
+                <p>Se você não solicitou, ignore este e-mail.</p>
+                """
+            )
+            flash("E-mail de recuperação enviado com sucesso!", "success")
+        else:
+            flash("Email não encontrado.", "danger")
+
+    return render_template('esqueci_senha.html')
+
+@app.route('/resetar_senha/<token>', methods=['GET', 'POST'])
+def resetar_senha(token):
+    try:
+        with open(f'tokens/{token}.txt') as f:
+            trabalhador_id = f.read().strip()
+    except:
+        flash("Token inválido ou expirado.", "danger")
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        nova_senha = request.form.get("nova_senha")
+        hashed = generate_password_hash(nova_senha)
+        conn = conectar()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE trabalhador SET senha_hash = %s WHERE id = %s", (hashed, trabalhador_id))
+        conn.commit()
+        conn.close()
+        os.remove(f'tokens/{token}.txt')
+        flash("Senha redefinida com sucesso!", "success")
+        return redirect(url_for('login'))
+
+    return render_template('resetar_senha.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

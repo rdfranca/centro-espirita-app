@@ -1,0 +1,11 @@
+{% extends "base_login.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h3>Redefinir senha</h3>
+  <form method="post">
+    <label>Nova senha</label>
+    <input type="password" name="nova_senha" required class="form-control mb-3">
+    <button class="btn btn-success">Atualizar Senha</button>
+  </form>
+</div>
+{% endblock %}
