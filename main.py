@@ -241,7 +241,7 @@ def enviar_email_confirmacao(destinatario, nome, assunto='Cadastro no Centro Esp
         <p>Olá, {nome}!</p>
         <p>Seu cadastro foi realizado com sucesso em nosso sistema.</p>
         <p>Seja muito bem-vindo(a) ao nosso Centro Espírita 🙏✨</p>
-        <p>Com carinho,<br>Equipe Luz do Consolador</p>
+        <p>Com carinho,<br>Equipe do CRE</p>
         """
 
     mensagem = Mail(
