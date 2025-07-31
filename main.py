@@ -7,6 +7,7 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import uuid 
 
+
 app = Flask(__name__)
 
 # --- CONFIGURAÇÃO DE SESSÃO ---
@@ -811,6 +812,8 @@ def esqueci_senha():
             reset_link = url_for('resetar_senha', token=token, _external=True)
 
             # Salvar o token temporariamente (em produção use tabela ou Redis)
+            if not os.path.exists('tokens'):
+                os.makedirs('tokens')
             with open(f'tokens/{token}.txt', 'w') as f:
                 f.write(str(user[0]))
 
